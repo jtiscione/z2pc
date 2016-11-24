@@ -1,14 +1,15 @@
+import Rx from 'rxjs/Rx';
+import MyWorker from 'worker-loader!./algorithm.js';
+
 const mandelbrotCanvas = document.getElementById('mandel');
 const ctx = mandelbrotCanvas.getContext('2d');
 const width = mandelbrotCanvas.width, height = mandelbrotCanvas.height;
-import Rx from 'rxjs/Rx';
-
-import MyWorker from 'worker-loader!./algorithm.js';
 const worker = new MyWorker();
 
 console.log("starting...");
 
 function paint(fractal) {
+    console.log(fractal.maxIters);
     const imageData = ctx.createImageData(fractal.width, fractal.height);
     imageData.data.set(fractal.pixelArray);
     ctx.putImageData(imageData, fractal.left, fractal.top);
@@ -17,7 +18,6 @@ function paint(fractal) {
 worker.addEventListener('message', (e) => paint(e.data));
 
 let params = {
-    frameNumber: 0,
     top: 0,
     left: 0,
     x1: -2,
@@ -26,22 +26,16 @@ let params = {
     y2: 4/3,
     width,
     height,
+    paletteIndex: Math.floor(100 * Math.random())
 };
-/*
-const keyframes = Array(1000);
-
-function addKeyFrame(params) {
-    keyframes[params.frameNumber] = params;
-}*/
 
 const click$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'click');
 
 click$.subscribe(e => {
     e.preventDefault();
-    const {x1, y1, x2, y2, width, height, frameNumber} = params;
+    const {x1, y1, x2, y2, width, height} = params;
     let scale = 10;
     params = Object.assign({}, params, {
-        frameNumber: frameNumber + 1,
         x1: x1 + (e.offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
         y1: y1 + (e.offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
         x2: x1 + (e.offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
