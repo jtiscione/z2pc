@@ -26,7 +26,6 @@ let params = {
     y2: 4/3,
     width,
     height,
-    maxIters: 512
 };
 /*
 const keyframes = Array(1000);
