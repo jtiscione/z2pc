@@ -1,0 +1,13 @@
+body {
+	background: #dddddd;
+}
+#mandel {
+	cursor: zoom-in;
+	float: left;
+}
+
+#clock {
+	cursor: crosshair;
+	margin: auto;
+}
+
