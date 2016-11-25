@@ -21,17 +21,19 @@ let params = {
     top: 0,
     left: 0,
     x1: -2,
-    y1: -4/3,
+    y1: -1.15,
     x2: 1.0,
-    y2: 4/3,
+    y2: 1.15,
     width,
     height,
-    paletteIndex: Math.floor(100 * Math.random())
+    paletteIndex: Math.floor(100 * Math.random()),
+
 };
 
-const click$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'click');
+const click$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'click').debounceTime(500);
 
 click$.subscribe(e => {
+    console.log('click');
     e.preventDefault();
     const {x1, y1, x2, y2, width, height} = params;
     let scale = 10;
@@ -43,31 +45,7 @@ click$.subscribe(e => {
     });
     worker.postMessage(params);
 });
-/*
-mandelbrotCanvas.addEventListener('click', (e) => {
-    e.preventDefault();
-    const {x1, y1, x2, y2, width, height, frameNumber} = params;
-    let scale = 1.09;
-    for (let i = 0; i < 8; i++) {
-        params = Object.assign({}, params, {
-            frameNumber: frameNumber + 1,
-            x1: x1 + (e.offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
-            y1: y1 + (e.offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
-            x2: x1 + (e.offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
-            y2: y1 + (e.offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
-        });
-        workers[0].postMessage(params);
-    }
-});
-*/
-/*
-const workers = Array(1);
-for (let i = 0; i < 1; i++) {
-    workers[i] = new MyWorker();
-    workers[i].addEventListener('message', (e) => paint(e.data));
- workers[0].postMessage(params);
-}
-*/
+
 
 console.log("postMessage...");
 worker.postMessage(params);
@@ -81,7 +59,31 @@ worker.postMessage(params);
 
 
 
-
+/*
+ mandelbrotCanvas.addEventListener('click', (e) => {
+ e.preventDefault();
+ const {x1, y1, x2, y2, width, height, frameNumber} = params;
+ let scale = 1.09;
+ for (let i = 0; i < 8; i++) {
+ params = Object.assign({}, params, {
+ frameNumber: frameNumber + 1,
+ x1: x1 + (e.offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
+ y1: y1 + (e.offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
+ x2: x1 + (e.offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
+ y2: y1 + (e.offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
+ });
+ workers[0].postMessage(params);
+ }
+ });
+ */
+/*
+ const workers = Array(1);
+ for (let i = 0; i < 1; i++) {
+ workers[i] = new MyWorker();
+ workers[i].addEventListener('message', (e) => paint(e.data));
+ workers[0].postMessage(params);
+ }
+ */
 
 /*
  function splitIntoTiles(params, tileWidth, tileHeight) {

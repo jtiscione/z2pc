@@ -127,8 +127,13 @@ function generateColors(histogram, paletteIndex) {
     return [reds, greens, blues];
 }
 
+let currentParameters = null;
+
 function generateFractal(parameters) {
-    //console.time("generateFractal");
+    //console.log(JSON.stringify(parameters));
+
+    currentParameters = parameters;
+
     const {x1, y1, x2, y2, width, height, paletteIndex} = parameters;
     const xstep = (x2 - x1) / width, ystep = (y2 - y1) / height;
 
@@ -139,17 +144,22 @@ function generateFractal(parameters) {
 
      let histogram = [];
 
-     let priorMaxIters = 0;
-     for (let maxIters = 256; maxIters <= 16384; maxIters *= 2) {
+     let priorMaxIters = 0, maxIters = 256;
 
-         console.time("maxIters "+maxIters);
+     const loopIteration = () => {
 
-         histogram = histogram.concat(Array(maxIters - histogram.length).fill(0.0));
+         if (currentParameters !== parameters) {
+             return;
+         }
+
+         if (histogram.length < maxIters) {
+             histogram = histogram.concat(Array(maxIters - histogram.length).fill(0.0));
+         }
 
          let hits = 0;
 
          let rawIndex = 0;
-         for (let y = y1, i=0; i < height; i++, y += ystep) {
+         for (let y = y1, i = 0; i < height; i++, y += ystep) {
              for (let x = x1, j = 0; j < width; j++, x += xstep) {
                  const cx = x, cy = y;
                  let zx_original = z_real_Array[rawIndex], zy_original = z_imag_Array[rawIndex];
@@ -179,9 +189,15 @@ function generateFractal(parameters) {
          }
          priorMaxIters = maxIters;
 
+         if (currentParameters !== parameters) {
+             return;
+         }
+
          if (hits === 0) {
-             console.timeEnd("maxIters "+maxIters);
-             continue;
+             priorMaxIters = maxIters;
+             maxIters *= 4;
+             setTimeout(loopIteration, 5);
+             return;
          }
 
          rawIndex = 0;
@@ -192,9 +208,9 @@ function generateFractal(parameters) {
              for (let j = 0; j < width; j++) {
                  const iterationCount = iterationCountArray[rawIndex++];
                  if (iterationCount === maxIters) {
-                     pixelArray[pixelIndex++] = 4;
-                     pixelArray[pixelIndex++] = 4;
-                     pixelArray[pixelIndex++] = 4;
+                     pixelArray[pixelIndex++] = 8;
+                     pixelArray[pixelIndex++] = 8;
+                     pixelArray[pixelIndex++] = 8;
                  } else if (iterationCount === -1) {
                      pixelArray[pixelIndex++] = 0;
                      pixelArray[pixelIndex++] = 0;
@@ -207,17 +223,23 @@ function generateFractal(parameters) {
                  pixelArray[pixelIndex++] = 255; //alpha
              }
          }
+
+         if (currentParameters !== parameters) {
+             return;
+         }
+
          postMessage({
              pixelArray,
              maxIters,
              ...parameters
          });
-         console.timeEnd("maxIters "+maxIters);
-
-         if (hits < 100) {
-             break;
+         if (hits > 1000 && maxIters < 16384) {
+             priorMaxIters = maxIters;
+             maxIters *= 2;
+             setTimeout(loopIteration, 5);
          }
-     }
+     };
+     setTimeout(loopIteration, 5);
 }
 
 addEventListener('message', (e) => {
