@@ -6,9 +6,8 @@ const ctx = mandelbrotCanvas.getContext('2d');
 const width = mandelbrotCanvas.width, height = mandelbrotCanvas.height;
 const worker = new MyWorker();
 
-console.log("starting...");
-
 function paint(fractal) {
+    console.log("done: "+fractal.done);
     console.log(fractal.maxIters);
     const imageData = ctx.createImageData(fractal.width, fractal.height);
     imageData.data.set(fractal.pixelArray);
@@ -27,29 +26,33 @@ let params = {
     width,
     height,
     paletteIndex: Math.floor(100 * Math.random()),
-
 };
 
 const click$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'click').debounceTime(500);
 
 click$.subscribe(e => {
-    console.log('click');
     e.preventDefault();
+    let offsetX = e.offsetX, offsetY = e.offsetY;
+    if (!offsetX && !offsetY) {
+        // Firefox...
+        const tgt = e.target || e.srcElement;
+        const rect    = tgt.getBoundingClientRect();
+        offsetX = e.clientX - rect.left,
+        offsetY  = e.clientY - rect.top;
+    }
+    console.log('click('+offsetX+", "+offsetY+")");
     const {x1, y1, x2, y2, width, height} = params;
     let scale = 10;
     params = Object.assign({}, params, {
-        x1: x1 + (e.offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
-        y1: y1 + (e.offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
-        x2: x1 + (e.offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
-        y2: y1 + (e.offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
+        x1: x1 + (offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
+        y1: y1 + (offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
+        x2: x1 + (offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
+        y2: y1 + (offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
     });
     worker.postMessage(params);
 });
 
-
-console.log("postMessage...");
 worker.postMessage(params);
-//paint(generateFractal(params));
 
 
 

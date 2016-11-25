@@ -127,28 +127,25 @@ function generateColors(histogram, paletteIndex) {
     return [reds, greens, blues];
 }
 
-let currentParameters = null;
+let latestParameters = null;
 
 function generateFractal(parameters) {
-    //console.log(JSON.stringify(parameters));
 
-    currentParameters = parameters;
-
+    latestParameters = parameters;
     const {x1, y1, x2, y2, width, height, paletteIndex} = parameters;
     const xstep = (x2 - x1) / width, ystep = (y2 - y1) / height;
-
     const iterationCountArray = Array(width * height).fill(0.0);
     const z_real_Array = Array(width * height).fill(0.0);
     const z_imag_Array = Array(width * height).fill(0.0);
     const pixelArray = new Uint8ClampedArray(4 * width * height);
 
      let histogram = [];
-
+     let totalHits = 0;
      let priorMaxIters = 0, maxIters = 256;
 
      const loopIteration = () => {
 
-         if (currentParameters !== parameters) {
+         if (latestParameters !== parameters) {
              return;
          }
 
@@ -189,13 +186,15 @@ function generateFractal(parameters) {
          }
          priorMaxIters = maxIters;
 
-         if (currentParameters !== parameters) {
+         totalHits += hits;
+
+         if (latestParameters !== parameters) {
              return;
          }
 
-         if (hits === 0) {
+         if (totalHits === 0) {
              priorMaxIters = maxIters;
-             maxIters *= 4;
+             maxIters *= 8;
              setTimeout(loopIteration, 5);
              return;
          }
@@ -204,8 +203,8 @@ function generateFractal(parameters) {
          let pixelIndex = 0;
          const [reds, greens, blues] = generateColors(histogram, paletteIndex);
 
-         for (let i = 0; i < height; i++) {
-             for (let j = 0; j < width; j++) {
+         for (let i = 0; i < height && latestParameters === parameters; i++) {
+             for (let j = 0; j < width && latestParameters === parameters; j++) {
                  const iterationCount = iterationCountArray[rawIndex++];
                  if (iterationCount === maxIters) {
                      pixelArray[pixelIndex++] = 8;
@@ -223,17 +222,17 @@ function generateFractal(parameters) {
                  pixelArray[pixelIndex++] = 255; //alpha
              }
          }
-
-         if (currentParameters !== parameters) {
+         if (latestParameters !== parameters) {
              return;
          }
-
+         const done = !(hits > 1000 && maxIters < 16384);
          postMessage({
              pixelArray,
              maxIters,
+             done,
              ...parameters
          });
-         if (hits > 1000 && maxIters < 16384) {
+         if (!done) {
              priorMaxIters = maxIters;
              maxIters *= 2;
              setTimeout(loopIteration, 5);
