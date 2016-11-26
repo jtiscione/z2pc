@@ -103,13 +103,8 @@ const palettes = [
 ];
 
 function generateColors(histogram, paletteIndex) {
-    const colormap = interpolate(palettes[paletteIndex]);
     // Compute cumulativeHistogram
-    let total = 0;
-    for (let i = 0; i < histogram.length; i += 1) {
-        total += histogram[i]
-    }
-    total = histogram.reduce((a, b) => a + b, 0);
+    const total = histogram.reduce((a, b) => a + b, 0);
     const cumulativeHistogram = Array(histogram.length);
     histogram.reduce((sum, currentValue, currentIndex) => {
         sum += currentValue / total;
@@ -117,6 +112,7 @@ function generateColors(histogram, paletteIndex) {
         return sum;
     }, 0);
     const reds = Array(histogram.length), greens = Array(histogram.length), blues = Array(histogram.length);
+    const colormap = interpolate(palettes[paletteIndex]);
     for (let i = 0; i < histogram.length; i++) {
         let rgbCSS = colormap(cumulativeHistogram[i]);
         const rgb = rgbCSS.match(/rgb\((\d+),(\d+),(\d+)\)/);
@@ -162,7 +158,7 @@ function generateFractal(parameters) {
                  let zx_original = z_real_Array[rawIndex], zy_original = z_imag_Array[rawIndex];
                  let zx = zx_original, zy = zy_original;
                  let iterationCount;
-                 // The >= 0 check is for the -1 values indicating periodicity
+                 // Any -1 values indicating periodicity are bypassed by the >= priorMaxIters check
                  for (iterationCount = iterationCountArray[rawIndex]; iterationCount >= priorMaxIters && iterationCount < maxIters; iterationCount++) {
                      const x2 = zx * zx - zy * zy;
                      zy = 2 * zx * zy + cy;
@@ -188,10 +184,6 @@ function generateFractal(parameters) {
 
          totalHits += hits;
 
-         if (latestParameters !== parameters) {
-             return;
-         }
-
          if (totalHits === 0) {
              priorMaxIters = maxIters;
              maxIters *= 8;
@@ -200,32 +192,29 @@ function generateFractal(parameters) {
          }
 
          rawIndex = 0;
-         let pixelIndex = 0;
+         let pixelArrayIndex = 0;
          const [reds, greens, blues] = generateColors(histogram, paletteIndex);
 
-         for (let i = 0; i < height && latestParameters === parameters; i++) {
-             for (let j = 0; j < width && latestParameters === parameters; j++) {
+         for (let i = 0; i < height; i++) {
+             for (let j = 0; j < width; j++) {
                  const iterationCount = iterationCountArray[rawIndex++];
                  if (iterationCount === maxIters) {
-                     pixelArray[pixelIndex++] = 8;
-                     pixelArray[pixelIndex++] = 8;
-                     pixelArray[pixelIndex++] = 8;
+                     pixelArray[pixelArrayIndex++] = 8;
+                     pixelArray[pixelArrayIndex++] = 8;
+                     pixelArray[pixelArrayIndex++] = 8;
                  } else if (iterationCount === -1) {
-                     pixelArray[pixelIndex++] = 0;
-                     pixelArray[pixelIndex++] = 0;
-                     pixelArray[pixelIndex++] = 0;
+                     pixelArray[pixelArrayIndex++] = 0;
+                     pixelArray[pixelArrayIndex++] = 0;
+                     pixelArray[pixelArrayIndex++] = 0;
                  } else {
-                     pixelArray[pixelIndex++] = reds[iterationCount];  //red
-                     pixelArray[pixelIndex++] = greens[iterationCount];  //green
-                     pixelArray[pixelIndex++] = blues[iterationCount];  //blue
+                     pixelArray[pixelArrayIndex++] = reds[iterationCount];
+                     pixelArray[pixelArrayIndex++] = greens[iterationCount];
+                     pixelArray[pixelArrayIndex++] = blues[iterationCount];
                  }
-                 pixelArray[pixelIndex++] = 255; //alpha
+                 pixelArray[pixelArrayIndex++] = 255; //alpha
              }
          }
-         if (latestParameters !== parameters) {
-             return;
-         }
-         const done = !(hits > 1000 && maxIters < 16384);
+         const done = hits < 1000;
          postMessage({
              pixelArray,
              maxIters,
