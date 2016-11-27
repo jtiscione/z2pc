@@ -1,6 +1,7 @@
 const path = require('path');
 
 const webpack = require('webpack');
+const CleanWebpackPlugin = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBuildNotifierPlugin = require('webpack-build-notifier');
 
@@ -71,6 +72,11 @@ module.exports = {
             //'process.env.BROWSER': true,
             __DEV__: isDebug,
 
+        }),
+        new CleanWebpackPlugin(['dist'], {
+            root: path.resolve(__dirname, '.'),
+            verbose: true,
+            dry: false
         }),
         new ExtractTextPlugin('styles.css'),
 

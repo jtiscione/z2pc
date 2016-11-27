@@ -6,17 +6,70 @@ const ctx = mandelbrotCanvas.getContext('2d');
 const width = mandelbrotCanvas.width, height = mandelbrotCanvas.height;
 const worker = new MyWorker();
 
+const ZOOMFACTOR = 10.0;
+
+let zoomRectangle = null;
+
+function mouseCoords(e) {
+    let offsetX = e.offsetX, offsetY = e.offsetY;
+    if (!offsetX && !offsetY) {
+        // Firefox...
+        const tgt = e.target || e.srcElement;
+        const rect = tgt.getBoundingClientRect();
+        offsetX = e.clientX - rect.left,
+        offsetY  = e.clientY - rect.top;
+    }
+    return [offsetX, offsetY];
+}
+
+
+function interpolateX(params, offsetX) {
+    const {x1, x2, width} = params;
+    return x1 + (offsetX / width) * (x2 - x1);
+}
+
+function interpolateY(params, offsetY) {
+    const {y1, y2, height} = params;
+    return y1 + (offsetY / height) * (y2 - y1);
+}
+
+function interpolateZoomRect(params, offsetX, offsetY, zoom = ZOOMFACTOR) {
+    const {x1, y1, x2, y2, width, height} = params;
+
+    offsetX = Math.max(offsetX, width / 2 / zoom);
+    offsetX = Math.min(offsetX, width - (width / 2 / zoom));
+    offsetY = Math.max(offsetY, height / 2 / zoom);
+    offsetY = Math.min(offsetY, height - (height / 2 / zoom));
+    return {
+        x1: interpolateX(params, offsetX, zoom) - (x2 - x1) / (2 * zoom),
+        x2: interpolateX(params, offsetX, zoom) + (x2 - x1) / (2 * zoom),
+        y1: interpolateY(params, offsetY, zoom) - (y2 - y1) / (2 * zoom),
+        y2: interpolateY(params, offsetY, zoom) + (y2 - y1) / (2 * zoom),
+    };
+}
+
 function paint(fractal) {
-    console.log("done: "+fractal.done);
-    console.log(fractal.maxIters);
+    console.log("done: "+fractal.done+", maxIters:"+fractal.maxIters);
     const imageData = ctx.createImageData(fractal.width, fractal.height);
     imageData.data.set(fractal.pixelArray);
     ctx.putImageData(imageData, fractal.left, fractal.top);
 }
 
-worker.addEventListener('message', (e) => paint(e.data));
+function worker$(params) {
+    worker.postMessage(params);
+    return Rx.Observable.fromEvent(worker, 'message')
+        .map(event => event.data)
+        .takeWhile(results => params.frameNumber === results.frameNumber);
+}
+
+function render(params) {
+    worker$(params).subscribe(paint);
+}
+
+//worker.addEventListener('message', (e) => paint(e.data));
 
 let params = {
+    frameNumber: 0,
     top: 0,
     left: 0,
     x1: -2,
@@ -28,65 +81,31 @@ let params = {
     paletteIndex: Math.floor(100 * Math.random()),
 };
 
+Rx.Observable.fromEvent(mandelbrotCanvas, 'mouseout').subscribe(e => {
+    console.log("noZoomRectangle");
+    zoomRectangle = null;
+});
+
+const mouseover$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'mousemove');
+mouseover$.subscribe(e => {
+    e.preventDefault();
+    let [offsetX, offsetY] = mouseCoords(e);
+    console.log('mousemove('+offsetX+", "+offsetY+")");
+});
+
 const click$ = Rx.Observable.fromEvent(mandelbrotCanvas, 'click').debounceTime(500);
 
 click$.subscribe(e => {
     e.preventDefault();
-    let offsetX = e.offsetX, offsetY = e.offsetY;
-    if (!offsetX && !offsetY) {
-        // Firefox...
-        const tgt = e.target || e.srcElement;
-        const rect    = tgt.getBoundingClientRect();
-        offsetX = e.clientX - rect.left,
-        offsetY  = e.clientY - rect.top;
-    }
-    console.log('click('+offsetX+", "+offsetY+")");
-    const {x1, y1, x2, y2, width, height} = params;
-    let scale = 10;
-    params = Object.assign({}, params, {
-        x1: x1 + (offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
-        y1: y1 + (offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
-        x2: x1 + (offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
-        y2: y1 + (offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
-    });
-    worker.postMessage(params);
+    const [offsetX, offsetY] = mouseCoords(e);
+    params = Object.assign({}, params, interpolateZoomRect(params, offsetX, offsetY), {frameNumber: params.frameNumber + 1});
+    render(params);
 });
 
-worker.postMessage(params);
+render(params);
 
 
 
-
-
-
-
-
-
-/*
- mandelbrotCanvas.addEventListener('click', (e) => {
- e.preventDefault();
- const {x1, y1, x2, y2, width, height, frameNumber} = params;
- let scale = 1.09;
- for (let i = 0; i < 8; i++) {
- params = Object.assign({}, params, {
- frameNumber: frameNumber + 1,
- x1: x1 + (e.offsetX / width) * (x2 - x1) - (x2 - x1) / (2 * scale),
- y1: y1 + (e.offsetY / height) * (y2 - y1) - (y2 - y1) / (2 * scale),
- x2: x1 + (e.offsetX / width) * (x2 - x1) + (x2 - x1) / (2 * scale),
- y2: y1 + (e.offsetY / height) * (y2 - y1) + (y2 - y1) / (2 * scale)
- });
- workers[0].postMessage(params);
- }
- });
- */
-/*
- const workers = Array(1);
- for (let i = 0; i < 1; i++) {
- workers[i] = new MyWorker();
- workers[i].addEventListener('message', (e) => paint(e.data));
- workers[0].postMessage(params);
- }
- */
 
 /*
  function splitIntoTiles(params, tileWidth, tileHeight) {

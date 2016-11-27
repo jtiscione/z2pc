@@ -199,9 +199,9 @@ function generateFractal(parameters) {
              for (let j = 0; j < width; j++) {
                  const iterationCount = iterationCountArray[rawIndex++];
                  if (iterationCount === maxIters) {
-                     pixelArray[pixelArrayIndex++] = 8;
-                     pixelArray[pixelArrayIndex++] = 8;
-                     pixelArray[pixelArrayIndex++] = 8;
+                     pixelArray[pixelArrayIndex++] = 4;
+                     pixelArray[pixelArrayIndex++] = 4;
+                     pixelArray[pixelArrayIndex++] = 4;
                  } else if (iterationCount === -1) {
                      pixelArray[pixelArrayIndex++] = 0;
                      pixelArray[pixelArrayIndex++] = 0;
