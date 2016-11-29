@@ -20,7 +20,9 @@ let zoomSequenceActive = false;
 let hoverX = null, hoverY = null;
 
 const cars1 = new Audio('../audio/cars1.mp3'), cars2 = new Audio('../audio/cars2.mp3');
-
+const zoomSequence1 = new Audio('../audio/zoomSequence1.mp3');
+const afterzoom = new Audio('../audio/afterzoom.mp3');
+//const afterzoom = require('../audio/afterzoom.mp3');
 function mouseCoords(e) {
     let offsetX = e.offsetX, offsetY = e.offsetY;
     if (!offsetX && !offsetY) {
@@ -83,13 +85,11 @@ function updateFrame(response) {
     imageData.data.set(frame.results.pixelArray);
     frameCanvasContext.putImageData(imageData, 0, 0);
     if (frame.results.done) {
-        const afterzoom = require('../audio/afterzoom.mp3');
-        console.log("playing "+afterzoom);
-        new Audio(afterzoom).play();
+        afterzoom.play();
     }
-    mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
+//    mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
     CURRENT_FRAME_NUMBER = frame.parameters.frameNumber;
-    console.log("done: "+frame.results.done+", maxIters: "+frame.results.maxIters);
+//    console.log("done: "+frame.results.done+", maxIters: "+frame.results.maxIters);
 }
 
 function worker$(params) {
@@ -106,12 +106,8 @@ function render(params) {
 //worker.addEventListener('message', (e) => paint(e.data));
 
 function playCars() {
-    if (Math.random() < 0.8) {
-        cars1.play();
-    } else {
-        cars2.play();
-    }
-    setTimeout(playCars, Math.random() * 3000 + 3000);
+    setInterval(()=>{cars1.play()}, 4000);
+    setInterval(()=>{cars2.play()}, 5000);
 }
 
 $(function() {
@@ -129,6 +125,7 @@ $(function() {
     // In default mode (not zoomSequenceActive): periodically repaint canvas plus other stuff if necessary
     Rx.Observable.interval(100).subscribe(e=> {
         if (!zoomSequenceActive) {
+            console.log("acting normally...");
             let frame = frames[CURRENT_FRAME_NUMBER];
             if (frame !== null) {
                 mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
@@ -147,6 +144,8 @@ $(function() {
                     mainCanvasContext.strokeText(`y=${y}`, 10 + (mainCanvas.width / 2), mainCanvas.height - 10);
                 }
             }
+        } else {
+            console.log("...suppressed...");
         }
     });
 
@@ -171,43 +170,67 @@ $(function() {
 
     function engageZoomSequence(e) {
 
-        zoomSequenceActive = false; // turn back on to true later...
+        zoomSequenceActive = true; // turn back on to true later...
+        mainCanvas.style.cursor = 'wait';
         const [offsetX, offsetY] = mouseCoords(e);
         let frame = frames[CURRENT_FRAME_NUMBER]; // before CURRENT_FRAME_NUMBER gets updated...
         const params = Object.assign({}, frame.parameters, interpolateZoomRect(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
         render(params);
 
-        /*
-        const callbacks = Array(826);
-        let cursor1 = 0, cursor2 = 0, cursor3 = 0, cursor4 = 0;
-        callbacks[9] = callbacks[34] = callbacks[52] = callbacks[70] = callbacks[89] = callbacks[107] = callbacks[126] = callbacks[147] = function() {
-            mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.params.width, frame.params.height);
-            //draw cross starting at center and moving to offsetX, offsetY using cursor1 as counter
+        const cb = Array(777);
 
+        cb[0] = function() {
+            zoomSequence1.play();
         };
-        callbacks[255] = callbacks[275] = callbacks[295] = callbacks[315] = callbacks[335] = callbacks[365] = callbacks[385] = callbacks[405] = function() {
+        let cursor1 = 0, cursor2 = 0, cursor3 = 0, cursor4 = 0;
+        cb[9] = cb[34] = cb[52] = cb[70] = cb[89] = cb[107] = cb[126] = cb[147] = function() {
+            mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
+            mainCanvasContext.strokeStyle = 'blue';
+            mainCanvasContext.lineWidth = 1.0;
+            const centerX = mainCanvas.width / 2, centerY = mainCanvas.height / 2;
+            const currentX = centerX + (cursor1 / 7) * (offsetX - centerX);
+            const currentY = centerY + (cursor1 / 7) * (offsetY - centerY);
+            mainCanvasContext.beginPath();
+            mainCanvasContext.moveTo(currentX, 0);
+            mainCanvasContext.lineTo(currentX, mainCanvas.height - 1);
+            mainCanvasContext.stroke();
+            mainCanvasContext.beginPath();
+            mainCanvasContext.moveTo(0, currentY);
+            mainCanvasContext.lineTo(mainCanvas.width - 1, currentY);
+            mainCanvasContext.stroke();
+            cursor1++;
+            console.log("beep: " + cursor1);
+        };
+        cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[345] = cb[365] = cb[385] = function() {
             // draw rectangles starting on the outside and in to where interpolateZoomRect is, using cursor2 as a counter
+            cursor2++;
+            console.log("rect: " + cursor2);
         };
-        callbacks[520] = callbacks[536] = callbacks[552] = callbacks[568] = callbacks[585] = function() {
+        cb[480] = cb[496] = cb[522] = cb[538] = cb[565] = function() {
             // blink the smallest rectangle
+            cursor3++;
+            console.log("blink: " + cursor3);
         };
-        callbacks[600] = callbacks[625] = callbacks[650] = callbacks[675] = callbacks[700] = callbacks[725] = callbacks[750] = callbacks[775] = callbacks[800] = callbacks[825] = function() {
+        cb[550] = cb[575] = cb[600] = cb[625] = cb[650] = cb[675] = cb[700] = cb[725] = cb[750] = cb[775] = function() {
            // show zoom in frames
+           cursor4++;
+           console.log("click: " + cursor4);
         };
-        const interval$ = Rx.Observable.interval(10).take(826).subscribe(e=> {
-            if (callbacks[e]) {
-                callbacks[e];
+        cb[776] = function() {
+            mainCanvas.style.cursor = 'crosshair';
+            zoomSequenceActive = false;
+        };
+        Rx.Observable.interval(10).take(cb.length).subscribe(e=> {
+            if (cb[e]) {
+                cb[e]();
             }
         });
-        */
-
     }
 
 
 
 
     Rx.Observable.fromEvent(mainCanvas, 'mouseout').subscribe(e => {
-        console.log('mouseout');
         hoverX = hoverY = null;
     });
 
