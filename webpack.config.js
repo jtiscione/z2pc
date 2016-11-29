@@ -53,20 +53,28 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                loader: ExtractTextPlugin.extract('style-loader' , combineLoaders([
-                    {
-                        loader: 'css-loader',
-                        query: {
-                            modules: true,
-                            localIdentName: '[name]__local__[hash:base64:5]',
-                            exclude: '/node_modules/',
-                        }
-                    }
-                ]))
+                loader: ExtractTextPlugin.extract('style-loader' ,
+                    combineLoaders([
+                        {
+                            loader: 'css-loader',
+                             query: {
+                                modules: false,
+                                localIdentName: '[name]',
+                                //modules: true,
+                                //localIdentName: '[name]__local__[hash:base64:5]',
+                                exclude: '/node_modules/',
+                             }
+                         }
+                     ])
+                )
+             },
+            {
+                test: /\.jpe?g$|\.gif$|\.png$|\.wav$|\.mp3$/,
+                loader: "file"
             },
             {
-                test: /\.jpe?g$|\.gif$|\.png$|\.svg$|\.woff$|\.ttf$|\.wav$|\.mp3$/,
-                loader: "file"
+                test: /\.(eot|svg|ttf|woff|woff2)$/,
+                loader: 'file?name=public/fonts/[name].[ext]'
             }
         ]
     },
