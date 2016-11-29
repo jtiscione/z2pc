@@ -177,6 +177,8 @@ $(function() {
         const params = Object.assign({}, frame.parameters, interpolateZoomRect(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
         render(params);
 
+
+
         const cb = Array(777);
 
         cb[0] = function() {
@@ -193,8 +195,6 @@ $(function() {
             mainCanvasContext.beginPath();
             mainCanvasContext.moveTo(currentX, 0);
             mainCanvasContext.lineTo(currentX, mainCanvas.height - 1);
-            mainCanvasContext.stroke();
-            mainCanvasContext.beginPath();
             mainCanvasContext.moveTo(0, currentY);
             mainCanvasContext.lineTo(mainCanvas.width - 1, currentY);
             mainCanvasContext.stroke();
