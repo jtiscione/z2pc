@@ -75,9 +75,8 @@ function interpolateZoomBounds(params, offsetX, offsetY, zoom = ZOOMFACTOR) {
     };
 }
 
-// Takes pixel coordinates, returns array of decreasing rectangles from entire canvas to zoom box inclusive
+// Takes pixel coordinates, returns array of decreasing rectangles excluding entire canvas and including zoom box
 function interpolateScreenClipRects(offsetX, offsetY, width, height, steps, zoom = ZOOMFACTOR) {
-
     const targetRect = {
         x: offsetX - width / (2 * zoom),
         y: offsetY - height / (2 * zoom),
@@ -88,10 +87,10 @@ function interpolateScreenClipRects(offsetX, offsetY, width, height, steps, zoom
     const rects = Array(steps);
     for (let step = 0; step < steps; step++) {
         rects[step] = {
-            x: targetRect.x * (step / (steps - 1)),
-            y: targetRect.y * (step / (steps - 1)),
-            width: width - (width - targetRect.width) * (step / (steps - 1)),
-            height: height - (height - targetRect.height) * (step / (steps - 1)),
+            x: targetRect.x * (step + 1) / steps,
+            y: targetRect.y * (step + 1) / steps,
+            width: width - (width - targetRect.width) * (step + 1) / steps,
+            height: height - (height - targetRect.height) * (step + 1) / steps,
         }
     }
     return rects;
@@ -206,7 +205,8 @@ $(function() {
 
         const mainCanvasContext = mainCanvas.getContext('2d');
 
-        const rects = interpolateScreenClipRects(offsetX, offsetY, width, height, 8)
+        let eightRects = interpolateScreenClipRects(offsetX, offsetY, width, height, 8);
+        let tenRects = interpolateScreenClipRects(offsetX, offsetY, width, height, 10);
 
         const cb = Array(777);
 
@@ -249,35 +249,55 @@ $(function() {
                 }
             }
             cursor1++;
-            console.log("beep: " + cursor1);
         };
-        cb[215] = cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[335] = cb[355] = function() {
+        cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[335] = cb[355] = cb[375] = function() {
             mainCanvasContext.drawImage(frame.canvas, 0, 0, width, height);
             // draw rectangles starting on the outside and in to where interpolateZoomRect is, using cursor2 as a counter
-            mainCanvasContext.strokeStyle = 'yellow';
+            mainCanvasContext.strokeStyle = '#FFFFFF';
             mainCanvasContext.lineWidth = 2;
-            const rect = rects[cursor2];
-            console.log(JSON.stringify(rect));
+            const rect = eightRects[cursor2];
             mainCanvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            console.log("rect: " + cursor2);
             if (cursor2 < 7) {
                 for (let prior = cursor2 - 1, alpha = 255; prior >= Math.max(0, cursor2 - 4); prior--) {
                     alpha >>= 2;
-                    const rect = rects[prior];
+                    const rect = eightRects[prior];
                     mainCanvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
                 }
             }
             cursor2++;
         };
-        cb[480] = cb[496] = cb[522] = cb[538] = cb[565] = function() {
+        cb[480] = cb[490] = cb[496] = cb[506] = cb[522] = cb[532] = cb[538] = cb[548] = cb[565] = function() {
             // blink the smallest rectangle
+            const rect = [...eightRects].pop();
+            if (cursor3 % 2 == 0) {
+                mainCanvasContext.strokeStyle = '#09f5ff';
+            } else {
+                mainCanvasContext.strokeStyle = 'white';
+            }
+            mainCanvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
             cursor3++;
-            console.log("blink: " + cursor3);
         };
         cb[550] = cb[575] = cb[600] = cb[625] = cb[650] = cb[675] = cb[700] = cb[725] = cb[750] = cb[775] = function() {
-           // show zoom in frames
-           cursor4++;
-           console.log("click: " + cursor4);
+            // show exterior expanding
+            const rect = tenRects[cursor4];
+            mainCanvasContext.drawImage(frame.canvas, rect.x, rect.y, rect.width, rect.height, 0, 0, width, height);
+            const nextFrame = frames[frame.parameters.frameNumber + 1];
+            if (nextFrame) {
+                const innerX = offsetX - width / (2 * ZOOMFACTOR) - rect.x;
+                const innerY = offsetY - height / (2 * ZOOMFACTOR) - rect.y;
+                const embeddedRect = {
+                    x: innerX * width / rect.width,
+                    y: innerY * height / rect.height,
+                    width: (width / ZOOMFACTOR) * width / rect.width,
+                    height: (height / ZOOMFACTOR) * height / rect.height
+                };
+                mainCanvasContext.strokeStyle = 'white';
+                mainCanvasContext.strokeRect(embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
+                mainCanvasContext.drawImage(nextFrame.canvas, 0, 0, width, height,
+                    embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
+
+            }
+            cursor4++;
         };
         cb[776] = function() {
             mainCanvas.style.cursor = 'crosshair';
