@@ -5,8 +5,8 @@ import $ from 'jquery';
 
 const FONT_NAME = 'WheatonCapitals-Regular';
 
-const mainCanvas = document.getElementById('mandel');
-const mainCanvasContext = mainCanvas.getContext('2d');
+let mainCanvas = null;
+
 const worker = new MyWorker();
 
 const ZOOMFACTOR = 10.0;
@@ -22,15 +22,22 @@ let hoverX = null, hoverY = null;
 const cars1 = new Audio('../audio/cars1.mp3'), cars2 = new Audio('../audio/cars2.mp3');
 const zoomSequence1 = new Audio('../audio/zoomSequence1.mp3');
 const afterzoom = new Audio('../audio/afterzoom.mp3');
-//const afterzoom = require('../audio/afterzoom.mp3');
-function mouseCoords(e) {
+
+function mouseCoords(e, avoidEdges) {
     let offsetX = e.offsetX, offsetY = e.offsetY;
+    const tgt = e.target || e.srcElement;
     if (!offsetX && !offsetY) {
         // Firefox...
-        const tgt = e.target || e.srcElement;
         const rect = tgt.getBoundingClientRect();
         offsetX = e.clientX - rect.left,
             offsetY  = e.clientY - rect.top;
+    }
+    if (avoidEdges) {
+        // move away from edges
+        offsetX = Math.max(offsetX, tgt.width / 2 / ZOOMFACTOR);
+        offsetX = Math.min(offsetX, tgt.width - (tgt.width / 2 / ZOOMFACTOR));
+        offsetY = Math.max(offsetY, tgt.height / 2 / ZOOMFACTOR);
+        offsetY = Math.min(offsetY, tgt.height - (tgt.height / 2 / ZOOMFACTOR));
     }
     return [offsetX, offsetY];
 }
@@ -56,19 +63,38 @@ function inverseInterpolateY(params, y) {
 }
 
 
-function interpolateZoomRect(params, offsetX, offsetY, zoom = ZOOMFACTOR) {
-    const {x1, y1, x2, y2, width, height} = params;
+function interpolateZoomBounds(params, offsetX, offsetY, zoom = ZOOMFACTOR) {
 
-    offsetX = Math.max(offsetX, width / 2 / zoom);
-    offsetX = Math.min(offsetX, width - (width / 2 / zoom));
-    offsetY = Math.max(offsetY, height / 2 / zoom);
-    offsetY = Math.min(offsetY, height - (height / 2 / zoom));
+    const {x1, y1, x2, y2} = params;
+
     return {
         x1: interpolateX(params, offsetX, zoom) - (x2 - x1) / (2 * zoom),
         x2: interpolateX(params, offsetX, zoom) + (x2 - x1) / (2 * zoom),
         y1: interpolateY(params, offsetY, zoom) - (y2 - y1) / (2 * zoom),
         y2: interpolateY(params, offsetY, zoom) + (y2 - y1) / (2 * zoom),
     };
+}
+
+// Takes pixel coordinates, returns array of decreasing rectangles from entire canvas to zoom box inclusive
+function interpolateScreenClipRects(offsetX, offsetY, width, height, steps, zoom = ZOOMFACTOR) {
+
+    const targetRect = {
+        x: offsetX - width / (2 * zoom),
+        y: offsetY - height / (2 * zoom),
+        width: width / zoom,
+        height: height / zoom,
+    };
+
+    const rects = Array(steps);
+    for (let step = 0; step < steps; step++) {
+        rects[step] = {
+            x: targetRect.x * (step / (steps - 1)),
+            y: targetRect.y * (step / (steps - 1)),
+            width: width - (width - targetRect.width) * (step / (steps - 1)),
+            height: height - (height - targetRect.height) * (step / (steps - 1)),
+        }
+    }
+    return rects;
 }
 
 function updateFrame(response) {
@@ -89,7 +115,6 @@ function updateFrame(response) {
     }
 //    mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
     CURRENT_FRAME_NUMBER = frame.parameters.frameNumber;
-//    console.log("done: "+frame.results.done+", maxIters: "+frame.results.maxIters);
 }
 
 function worker$(params) {
@@ -114,25 +139,26 @@ $(function() {
 
     if (document.fonts.load) {
         try {
-            document.fonts.load('10pt "WheatonCapitals-Regular"').then(x => console.log("Loaded: "+x));
+            document.fonts.load('10pt "WheatonCapitals-Regular"').then(console.log);
         }
         catch(e) {
             console.log(e);
         }
     }
-    setTimeout(playCars, 0);
+
+    mainCanvas = $('#mandel')[0];
+    playCars();
 
     // In default mode (not zoomSequenceActive): periodically repaint canvas plus other stuff if necessary
     Rx.Observable.interval(100).subscribe(e=> {
         if (!zoomSequenceActive) {
-            console.log("acting normally...");
             let frame = frames[CURRENT_FRAME_NUMBER];
             if (frame !== null) {
+                const mainCanvasContext = mainCanvas.getContext('2d');
                 mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
                 if (hoverX !== null && hoverY !== null) {
                     const x = interpolateX(frame.parameters, hoverX).toFixed(3 + CURRENT_FRAME_NUMBER);
                     const y = -interpolateY(frame.parameters, hoverY).toFixed(3 + CURRENT_FRAME_NUMBER);
-
                     mainCanvasContext.font = `28px "${FONT_NAME}"`;
                     mainCanvasContext.textAlign = 'start';
                     mainCanvasContext.textBaseline = 'bottom';
@@ -144,8 +170,6 @@ $(function() {
                     mainCanvasContext.strokeText(`y=${y}`, 10 + (mainCanvas.width / 2), mainCanvas.height - 10);
                 }
             }
-        } else {
-            console.log("...suppressed...");
         }
     });
 
@@ -171,13 +195,18 @@ $(function() {
     function engageZoomSequence(e) {
 
         zoomSequenceActive = true; // turn back on to true later...
-        mainCanvas.style.cursor = 'wait';
-        const [offsetX, offsetY] = mouseCoords(e);
+        mainCanvas.style.cursor = 'cursor';
+
+        let [offsetX, offsetY] = mouseCoords(e, true);
         let frame = frames[CURRENT_FRAME_NUMBER]; // before CURRENT_FRAME_NUMBER gets updated...
-        const params = Object.assign({}, frame.parameters, interpolateZoomRect(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
+        let width = frame.parameters.width, height = frame.parameters.height;
+
+        const params = Object.assign({}, frame.parameters, interpolateZoomBounds(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
         render(params);
 
+        const mainCanvasContext = mainCanvas.getContext('2d');
 
+        const rects = interpolateScreenClipRects(offsetX, offsetY, width, height, 8)
 
         const cb = Array(777);
 
@@ -186,25 +215,59 @@ $(function() {
         };
         let cursor1 = 0, cursor2 = 0, cursor3 = 0, cursor4 = 0;
         cb[9] = cb[34] = cb[52] = cb[70] = cb[89] = cb[107] = cb[126] = cb[147] = function() {
-            mainCanvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
-            mainCanvasContext.strokeStyle = 'blue';
-            mainCanvasContext.lineWidth = 1.0;
-            const centerX = mainCanvas.width / 2, centerY = mainCanvas.height / 2;
-            const currentX = centerX + (cursor1 / 7) * (offsetX - centerX);
-            const currentY = centerY + (cursor1 / 7) * (offsetY - centerY);
-            mainCanvasContext.beginPath();
-            mainCanvasContext.moveTo(currentX, 0);
-            mainCanvasContext.lineTo(currentX, mainCanvas.height - 1);
-            mainCanvasContext.moveTo(0, currentY);
-            mainCanvasContext.lineTo(mainCanvas.width - 1, currentY);
-            mainCanvasContext.stroke();
+            mainCanvasContext.drawImage(frame.canvas, 0, 0, width, height);
+            let centerX = width / 2, centerY = height / 2;
+            if (Math.abs(centerX - offsetX) < 50) {
+                centerX = (offsetX + 100) % width;
+            }
+            if (Math.abs(centerY - offsetY) < 50) {
+                centerY = (offsetY + 100) % height;
+            }
+            function drawCross(x, y, color) {
+                mainCanvasContext.strokeStyle = color;
+                mainCanvasContext.lineWidth = 1.0;
+                mainCanvasContext.beginPath();
+                mainCanvasContext.moveTo(x, 0);
+                mainCanvasContext.lineTo(x, y - height / (2 * ZOOMFACTOR));
+                mainCanvasContext.moveTo(x, y + height / (2 * ZOOMFACTOR));
+                mainCanvasContext.lineTo(x, height - 1);
+                mainCanvasContext.moveTo(0, y);
+                mainCanvasContext.lineTo(x - width / (2 * ZOOMFACTOR), y);
+                mainCanvasContext.moveTo(x + width / (2 * ZOOMFACTOR), y);
+                mainCanvasContext.lineTo(width - 1, y);
+                mainCanvasContext.stroke();
+            }
+            drawCross(centerX + (cursor1 / 7) * (offsetX - centerX),
+                        centerY + (cursor1 / 7) * (offsetY - centerY),
+                        'rgba(255,255,255,255');
+            if (cursor1 < 7) {
+                for (let prior = cursor1 - 1, alpha = 255; prior >= Math.max(cursor1 - 4); prior--) {
+                    alpha >>= 2;
+                    drawCross(  centerX + (prior / 7) * (offsetX - centerX),
+                        centerY + (prior / 7) * (offsetY - centerY),
+                        `rgba(255,255,255,${alpha})`);
+                }
+            }
             cursor1++;
             console.log("beep: " + cursor1);
         };
-        cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[345] = cb[365] = cb[385] = function() {
+        cb[215] = cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[335] = cb[355] = function() {
+            mainCanvasContext.drawImage(frame.canvas, 0, 0, width, height);
             // draw rectangles starting on the outside and in to where interpolateZoomRect is, using cursor2 as a counter
-            cursor2++;
+            mainCanvasContext.strokeStyle = 'yellow';
+            mainCanvasContext.lineWidth = 2;
+            const rect = rects[cursor2];
+            console.log(JSON.stringify(rect));
+            mainCanvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
             console.log("rect: " + cursor2);
+            if (cursor2 < 7) {
+                for (let prior = cursor2 - 1, alpha = 255; prior >= Math.max(0, cursor2 - 4); prior--) {
+                    alpha >>= 2;
+                    const rect = rects[prior];
+                    mainCanvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                }
+            }
+            cursor2++;
         };
         cb[480] = cb[496] = cb[522] = cb[538] = cb[565] = function() {
             // blink the smallest rectangle
@@ -227,19 +290,14 @@ $(function() {
         });
     }
 
-
-
-
     Rx.Observable.fromEvent(mainCanvas, 'mouseout').subscribe(e => {
         hoverX = hoverY = null;
     });
 
     Rx.Observable.fromEvent(mainCanvas, 'mousemove').subscribe(e => {
         e.preventDefault();
-        let [offsetX, offsetY] = mouseCoords(e);
+        let [offsetX, offsetY] = mouseCoords(e, false);
         hoverX = offsetX;
         hoverY = offsetY;
     });
 });
-
-//paint(generateFractal(params));
