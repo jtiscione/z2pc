@@ -1,4 +1,10 @@
-import interpolate from 'color-interpolate';
+const parse = require('color-parse');
+const hsl = require('color-space/hsl');
+const lerp = require('lerp');
+const clamp = require('mumath/clamp');
+
+//const interpolate = require('color-interpolate');
+
 const palettes = [
     ["#69d2e7","#a7dbd8","#e0e4cc","#f38630","#fa6900"],
     ["#fe4365","#fc9d9a","#f9cdad","#c8c8a9","#83af9b"],
@@ -101,6 +107,42 @@ const palettes = [
     ["#a1dbb2","#fee5ad","#faca66","#f7a541","#f45d4c"],
     ["#ff003c","#ff8a00","#fabe28","#88c100","#00c176"]
 ];
+
+// color-interpolate code moved here because of uglifyjs problems
+function interpolate(palette) {
+    palette = palette.map(c => {
+        c = parse(c);
+        if (c.space != 'rgb') {
+            if (c.space != 'hsl') throw `${c.space} space is not supported.`;
+            c.values = hsl.rgb(c.values);
+        }
+        c.values.push(c.alpha);
+        return c.values;
+    });
+
+    return (t, mix = lerp) => {
+        t = clamp(t, 0, 1);
+
+        let idx = ( palette.length - 1 ) * t,
+            lIdx = Math.floor( idx ),
+            rIdx = Math.ceil( idx );
+
+        t = idx - lIdx;
+
+        let lColor = palette[lIdx], rColor = palette[rIdx];
+
+        let result = lColor.map((v, i) => {
+            v = mix(v, rColor[i], t);
+            if (i < 3) v = Math.round(v);
+            return v;
+        });
+
+        if (result[3] === 1) {
+            return `rgb(${result.slice(0,3)})`;
+        }
+        return `rgba(${result})`;
+    };
+}
 
 export default function (histogram, paletteIndex) {
     // Compute cumulativeHistogram

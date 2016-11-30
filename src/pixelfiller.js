@@ -1,6 +1,3 @@
-/**
- * Created by jason on 11/28/16.
- */
 import generateColors from './palette.js';
 
 export default function(pixelArray, iterationCountArray, width, height, histogram, paletteIndex) {

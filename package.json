@@ -28,7 +28,10 @@
     "worker-loader": "^0.7.1"
   },
   "dependencies": {
-    "color-interpolate": "^1.0.2",
+    "color-parse": "^1.2.0",
+    "color-space": "^1.14.3",
+    "lerp": "^1.0.3",
+    "mumath": "^3.0.0",
     "jquery": "^3.1.1",
     "rxjs": "^5.0.0-beta.12"
   }
