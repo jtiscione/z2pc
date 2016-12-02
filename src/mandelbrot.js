@@ -91,14 +91,14 @@ class FractalComponent {
         const height = canvas.height;
 
         this.worker = new MyWorker();
+        this.listeners = {};
 
         this.frames = Array(MAXFRAMES).fill(null);
         this.CURRENT_FRAME_NUMBER = 0;
 
         this.zoomSequenceActive = false;
 
-        this.hoverX = null;
-        this.hoverY = null;
+        this.hover = null;
 
         // In default mode (not zoomSequenceActive): periodically repaint canvas plus other stuff if necessary
         Rx.Observable.interval(100).subscribe(this.paintCurrentFrame.bind(this));
@@ -115,6 +115,20 @@ class FractalComponent {
             initialParams.height = height;
         }
         this.startCalculating(initialParams);
+    }
+
+    on(type, listener) {
+        if (!this.listeners.hasOwnProperty(type)) {
+            this.listeners[type] = [];
+        }
+        this.listeners[type].push(listener);
+        return this;
+    }
+
+    emit(type, ...args) {
+        if (this.listeners.hasOwnProperty(type)) {
+            this.listeners[type].forEach(lis => {lis(...args)});
+        }
     }
 
     startCalculating(params) {
@@ -154,9 +168,8 @@ class FractalComponent {
             if (frame !== null) {
                 const canvasContext = this.canvas.getContext('2d');
                 canvasContext.drawImage(frame.canvas, 0, 0, frame.parameters.width, frame.parameters.height);
-                if (this.hoverX !== null && this.hoverY !== null) {
-                    const x = interpolateX(frame.parameters, this.hoverX).toFixed(3 + this.CURRENT_FRAME_NUMBER);
-                    const y = -interpolateY(frame.parameters, this.hoverY).toFixed(3 + this.CURRENT_FRAME_NUMBER);
+                if (this.hover !== null ) {
+                    const {x, y} = this.hover;
                     canvasContext.font = `28px "${FONT_NAME}"`;
                     canvasContext.textAlign = 'start';
                     canvasContext.textBaseline = 'bottom';
@@ -174,12 +187,19 @@ class FractalComponent {
     updateHover(e) {
         e.preventDefault();
         let [offsetX, offsetY] = mouseCoords(e, false);
-        this.hoverX = offsetX;
-        this.hoverY = offsetY;
+        const params = this.frames[this.CURRENT_FRAME_NUMBER].parameters;
+        this.hover = {
+            mouseX: offsetX,
+            mouseY: offsetY,
+            x: interpolateX(params, offsetX).toFixed(3 + this.CURRENT_FRAME_NUMBER),
+            y: -interpolateY(params, offsetY).toFixed(3 + this.CURRENT_FRAME_NUMBER),
+        };
+        this.emit('hover', this.hover);
     }
 
-    clearHover(e) {
-        this.hoverX = this.hoverY = null;
+    clearHover() {
+        this.hover = null;
+        this.emit('clearHover');
     }
 
     zoom(e) {
@@ -195,6 +215,14 @@ class FractalComponent {
         let frame = this.frames[this.CURRENT_FRAME_NUMBER]; // before CURRENT_FRAME_NUMBER gets updated...
 
         const params = Object.assign({}, frame.parameters, interpolateZoomBounds(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
+
+        this.emit('zoom', {
+            mouseX: offsetX,
+            mouseY: offsetY,
+            x: interpolateX(frame.parameters, offsetX).toFixed(3 + this.CURRENT_FRAME_NUMBER),
+            y: interpolateY(frame.parameters, offsetY).toFixed(3 + this.CURRENT_FRAME_NUMBER),
+        });
+
         this.startCalculating(params);
 
         const canvasContext = this.canvas.getContext('2d');
