@@ -84,11 +84,9 @@ function interpolateScreenClipRects(offsetX, offsetY, width, height, steps, zoom
 
 class FractalComponent {
 
-    constructor(canvas, initialParams) {
+    constructor(canvas, interactive, initialParams) {
 
         this.canvas = canvas;
-        const width = canvas.width;
-        const height = canvas.height;
 
         this.worker = new MyWorker();
         this.listeners = {};
@@ -103,18 +101,15 @@ class FractalComponent {
         // In default mode (not zoomSequenceActive): periodically repaint canvas plus other stuff if necessary
         Rx.Observable.interval(100).subscribe(this.paintCurrentFrame.bind(this));
 
-
-        Rx.Observable.fromEvent(this.canvas, 'mouseout').subscribe(this.clearHover.bind(this));
-        Rx.Observable.fromEvent(this.canvas, 'mousemove').subscribe(this.updateHover.bind(this));
-        Rx.Observable.fromEvent(this.canvas, 'click').debounceTime(500).subscribe(this.zoom.bind(this));
-
-        if (!initialParams.width) {
-            initialParams.width = width;
+        if (interactive) {
+            Rx.Observable.fromEvent(this.canvas, 'mouseout').subscribe(this.clearHover.bind(this));
+            Rx.Observable.fromEvent(this.canvas, 'mousemove').subscribe(this.updateHover.bind(this));
+            Rx.Observable.fromEvent(this.canvas, 'click').debounceTime(500).subscribe(this.zoom.bind(this));
         }
-        if (!initialParams.height) {
-            initialParams.height = height;
+
+        if (initialParams) {
+            this.startCalculating(initialParams);
         }
-        this.startCalculating(initialParams);
     }
 
     on(type, listener) {
@@ -132,6 +127,12 @@ class FractalComponent {
     }
 
     startCalculating(params) {
+        if (!params.width) {
+            params.width = this.canvas.width;
+        }
+        if (!params.height) {
+            params.height = this.canvas.height;
+        }
         console.log("1params: "+JSON.stringify(params));
         this.worker.postMessage(params);
         Rx.Observable.fromEvent(this.worker, 'message')
@@ -156,9 +157,11 @@ class FractalComponent {
         const imageData = frameCanvasContext.createImageData(frame.parameters.width, frame.parameters.height);
         imageData.data.set(frame.results.pixelArray);
         frameCanvasContext.putImageData(imageData, 0, 0);
+        /*
         if (frame.results.done) {
             afterzoom.play();
         }
+        */
         this.CURRENT_FRAME_NUMBER = frame.parameters.frameNumber;
     }
 
@@ -187,19 +190,30 @@ class FractalComponent {
     updateHover(e) {
         e.preventDefault();
         let [offsetX, offsetY] = mouseCoords(e, false);
+        if (this.frames[this.CURRENT_FRAME_NUMBER] === null) {
+            return;
+        }
         const params = this.frames[this.CURRENT_FRAME_NUMBER].parameters;
         this.hover = {
             mouseX: offsetX,
             mouseY: offsetY,
-            x: interpolateX(params, offsetX).toFixed(3 + this.CURRENT_FRAME_NUMBER),
+            x: +interpolateX(params, offsetX).toFixed(3 + this.CURRENT_FRAME_NUMBER),
             y: -interpolateY(params, offsetY).toFixed(3 + this.CURRENT_FRAME_NUMBER),
         };
-        this.emit('hover', this.hover);
+        this.emit('update-hover', this.hover);
     }
 
     clearHover() {
         this.hover = null;
-        this.emit('clearHover');
+        this.emit('clear-hover');
+    }
+
+    reset() {
+        this.frames = Array(MAXFRAMES).fill(null);
+        this.hover = null;
+        this.CURRENT_FRAME_NUMBER = 0;
+        this.zoomSequenceActive = false;
+        this.emit('reset');
     }
 
     zoom(e) {
@@ -216,7 +230,7 @@ class FractalComponent {
 
         const params = Object.assign({}, frame.parameters, interpolateZoomBounds(frame.parameters, offsetX, offsetY), {frameNumber: frame.parameters.frameNumber + 1});
 
-        this.emit('zoom', {
+        this.emit('zoom-start', {
             mouseX: offsetX,
             mouseY: offsetY,
             x: interpolateX(frame.parameters, offsetX).toFixed(3 + this.CURRENT_FRAME_NUMBER),
@@ -326,6 +340,8 @@ class FractalComponent {
         cb[776] = () => {
             this.canvas.style.cursor = 'crosshair';
             this.zoomSequenceActive = false;
+            this.emit('zoom-end');
+
         };
         Rx.Observable.interval(10).take(cb.length).subscribe(e=> {
             if (cb[e]) {
@@ -349,14 +365,45 @@ $(function() {
     setInterval(()=>{cars1.play()}, 4000);
     setInterval(()=>{cars2.play()}, 5000);
 
-    const fc = new FractalComponent($('#mandel')[0],
+    const paletteIndexM = Math.floor(100 * Math.random());
+    const paletteIndexJ = Math.floor(100 * Math.random());
+
+    const mandel = new FractalComponent($('#mandel')[0],
+        true,
         {
             frameNumber: 0,
             x1: -2,
             y1: -1.15,
             x2: 1.0,
             y2: 1.15,
-            paletteIndex: Math.floor(100 * Math.random()),
+            paletteIndex: paletteIndexM,
         }
     );
+
+    const julia = new FractalComponent($('#julia')[0], false);
+
+    let responsiveJulia = true;
+
+    mandel.on('update-hover', location => {
+        const {mouseX, mouseY, x, y} = location;
+        if (responsiveJulia) {
+            julia.startCalculating({
+                frameNumber: 0,
+                x1: -2,
+                y1: -1.15,
+                x2: 1.0,
+                y2: 1.15,
+                juliaX: x,
+                juliaY: y,
+                paletteIndex: paletteIndexJ,
+            });
+        }
+    });
+    mandel.on('clear-hover', julia.reset);
+    mandel.on('zoom-start', obj => {
+        responsiveJulia = false;
+    });
+    mandel.on('zoom-end', obj => {
+        responsiveJulia = true;
+    })
 });

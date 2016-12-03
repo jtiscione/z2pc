@@ -23,7 +23,6 @@ function generateFractal(parameters) {
     const loopIteration = () => {
 
         passCount++;
-
         if (latestParameters !== parameters) {
             return;
         }
@@ -43,7 +42,7 @@ function generateFractal(parameters) {
                 if (julia) {
                     cx = juliaX;
                     cy = juliaY;
-                    if (passCount === 0) {
+                    if (passCount === 1) {
                         z_real_Array[rawIndex] = x;
                         z_imag_Array[rawIndex] = y;
                     }
