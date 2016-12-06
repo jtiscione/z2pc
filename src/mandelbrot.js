@@ -94,12 +94,15 @@ class FractalComponent {
         this.frames = Array(MAXFRAMES).fill(null);
         this.CURRENT_FRAME_NUMBER = 0;
 
-        this.zoomSequenceActive = false;
-
         this.hover = null;
 
+        this.animationFrameTimestamp = null;
+
+        this.animationFrameJobs = null;
+
         // In default mode (not zoomSequenceActive): periodically repaint canvas plus other stuff if necessary
-        Rx.Observable.interval(100).subscribe(this.paintCurrentFrame.bind(this));
+        //Rx.Observable.interval(100).subscribe(this.paintCurrentFrame.bind(this));
+        requestAnimationFrame(this.paintCurrentFrame.bind(this));
 
         if (interactive) {
             Rx.Observable.fromEvent(this.canvas, 'mouseout').subscribe(this.clearHover.bind(this));
@@ -133,12 +136,10 @@ class FractalComponent {
         if (!params.height) {
             params.height = this.canvas.height;
         }
-        console.log("1params: "+JSON.stringify(params));
         this.worker.postMessage(params);
         Rx.Observable.fromEvent(this.worker, 'message')
             .map(event => event.data)
             .takeWhile(function(response) {
-                console.log("2params: "+JSON.stringify(params));
                 return params.frameNumber === response.parameters.frameNumber;
             })
             .subscribe(this.updateFrame.bind(this));
@@ -165,8 +166,14 @@ class FractalComponent {
         this.CURRENT_FRAME_NUMBER = frame.parameters.frameNumber;
     }
 
-    paintCurrentFrame() {
-        if (!this.zoomSequenceActive) {
+
+
+    paintCurrentFrame(timestamp) {
+        if (this.animationFrameTimestamp === timestamp) {
+            return;
+        }
+        this.animationFrameTimestamp = timestamp;
+        if (this.animationFrameJobs === null) {
             let frame = this.frames[this.CURRENT_FRAME_NUMBER];
             if (frame !== null) {
                 const canvasContext = this.canvas.getContext('2d');
@@ -184,7 +191,20 @@ class FractalComponent {
                     canvasContext.strokeText(`y=${y}`, BOTTOM_TEXT_MARGIN + (this.canvas.width / 2), this.canvas.height - BOTTOM_TEXT_MARGIN);
                 }
             }
+        } else {
+            if (this.animationFrameJobs.queue.length === 0) {
+                this.canvas.style.cursor = 'crosshair';
+                this.animationFrameJobs = null;
+                this.emit('zoom-end');
+            } else {
+                const job = this.animationFrameJobs.queue[0];
+                if (job.time <= (timestamp - this.animationFrameJobs.initialTimestamp)) {
+                    this.animationFrameJobs.queue.shift();
+                    job.callback();
+                }
+            }
         }
+        requestAnimationFrame(this.paintCurrentFrame.bind(this));
     }
 
     updateHover(e) {
@@ -212,17 +232,17 @@ class FractalComponent {
         this.frames = Array(MAXFRAMES).fill(null);
         this.hover = null;
         this.CURRENT_FRAME_NUMBER = 0;
-        this.zoomSequenceActive = false;
+        this.animationFrameJobs = null;
         this.emit('reset');
     }
 
     zoom(e) {
         e.preventDefault();
-        if (this.zoomSequenceActive) {
+        if (this.animationFrameJobs !== null) {
             return;
         }
 
-        this.zoomSequenceActive = true; // turn back on to true later...
+        zoomSequence1.play();
         this.canvas.style.cursor = 'cursor';
 
         let [offsetX, offsetY] = mouseCoords(e, true);
@@ -239,6 +259,7 @@ class FractalComponent {
 
         this.startCalculating(params);
 
+        // Set up this.animationFrameJobs
         const canvasContext = this.canvas.getContext('2d');
         const width = this.canvas.width;
         const height = this.canvas.height;
@@ -246,108 +267,132 @@ class FractalComponent {
         let eightRects = interpolateScreenClipRects(offsetX, offsetY, width, height, 8);
         let tenRects = interpolateScreenClipRects(offsetX, offsetY, width, height, 10);
 
-        const cb = Array(777);
+        const queue = [];
 
-        cb[0] = function() {
-            zoomSequence1.play();
-        };
-        let cursor1 = 0, cursor2 = 0, cursor3 = 0, cursor4 = 0;
-        cb[9] = cb[34] = cb[52] = cb[70] = cb[89] = cb[107] = cb[126] = cb[147] = () => {
-            canvasContext.drawImage(frame.canvas, 0, 0, width, height);
-            let centerX = width / 2, centerY = height / 2;
-            if (Math.abs(centerX - offsetX) < 50) {
-                centerX = (offsetX + 100) % width;
-            }
-            if (Math.abs(centerY - offsetY) < 50) {
-                centerY = (offsetY + 100) % height;
-            }
-            function drawCross(x, y, color) {
-                canvasContext.strokeStyle = color;
-                canvasContext.lineWidth = 1.0;
-                canvasContext.beginPath();
-                canvasContext.moveTo(x, 0);
-                canvasContext.lineTo(x, y - height / (2 * ZOOMFACTOR));
-                canvasContext.moveTo(x, y + height / (2 * ZOOMFACTOR));
-                canvasContext.lineTo(x, height - 1);
-                canvasContext.moveTo(0, y);
-                canvasContext.lineTo(x - width / (2 * ZOOMFACTOR), y);
-                canvasContext.moveTo(x + width / (2 * ZOOMFACTOR), y);
-                canvasContext.lineTo(width - 1, y);
-                canvasContext.stroke();
-            }
-            drawCross(centerX + (cursor1 / 7) * (offsetX - centerX),
-                centerY + (cursor1 / 7) * (offsetY - centerY),
-                'rgba(255,255,255,255');
-            if (cursor1 < 7) {
-                for (let prior = cursor1 - 1, alpha = 255; prior >= Math.max(cursor1 - 4); prior--) {
-                    alpha >>= 2;
-                    drawCross(  centerX + (prior / 7) * (offsetX - centerX),
-                        centerY + (prior / 7) * (offsetY - centerY),
-                        `rgba(255,255,255,${alpha})`);
+        const sequence1Frames = [90, 340, 520, 700, 890, 1070, 1260, 1470];
+        let cursor1 = 0;
+        sequence1Frames.forEach(e => {
+            queue.push({
+                time: e,
+                callback: () => {
+                    canvasContext.drawImage(frame.canvas, 0, 0, width, height);
+                    let centerX = width / 2, centerY = height / 2;
+                    if (Math.abs(centerX - offsetX) < 50) {
+                        centerX = (offsetX + 100) % width;
+                    }
+                    if (Math.abs(centerY - offsetY) < 50) {
+                        centerY = (offsetY + 100) % height;
+                    }
+                    function drawCross(x, y, color) {
+                        canvasContext.strokeStyle = color;
+                        canvasContext.lineWidth = 1.0;
+                        canvasContext.beginPath();
+                        canvasContext.moveTo(x, 0);
+                        canvasContext.lineTo(x, y - height / (2 * ZOOMFACTOR));
+                        canvasContext.moveTo(x, y + height / (2 * ZOOMFACTOR));
+                        canvasContext.lineTo(x, height - 1);
+                        canvasContext.moveTo(0, y);
+                        canvasContext.lineTo(x - width / (2 * ZOOMFACTOR), y);
+                        canvasContext.moveTo(x + width / (2 * ZOOMFACTOR), y);
+                        canvasContext.lineTo(width - 1, y);
+                        canvasContext.stroke();
+                    }
+
+                    drawCross(centerX + (cursor1 / (sequence1Frames.length - 1)) * (offsetX - centerX),
+                        centerY + (cursor1 / (sequence1Frames.length - 1)) * (offsetY - centerY),
+                        'rgba(255,255,255,255');
+                    if (cursor1 < (sequence1Frames.length - 1)) {
+                        for (let prior = cursor1 - 1, alpha = 255; prior >= Math.max(cursor1 - 4); prior--) {
+                            alpha >>= 2;
+                            drawCross(centerX + (prior / (sequence1Frames.length - 1)) * (offsetX - centerX),
+                                    centerY + (prior / (sequence1Frames.length - 1)) * (offsetY - centerY),
+                                    `rgba(255,255,255,${alpha})`);
+                        }
+                    }
+                    cursor1++;
                 }
-            }
-            cursor1++;
-        };
-        cb[235] = cb[255] = cb[275] = cb[295] = cb[315] = cb[335] = cb[355] = cb[375] = () => {
-            canvasContext.drawImage(frame.canvas, 0, 0, width, height);
-            // draw rectangles starting on the outside and in to where interpolateZoomRect is, using cursor2 as a counter
-            canvasContext.strokeStyle = '#FFFFFF';
-            canvasContext.lineWidth = 2;
-            const rect = eightRects[cursor2];
-            canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            if (cursor2 < 7) {
-                for (let prior = cursor2 - 1, alpha = 255; prior >= Math.max(0, cursor2 - 4); prior--) {
-                    alpha >>= 2;
-                    const rect = eightRects[prior];
-                    canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
-                }
-            }
-            cursor2++;
-        };
-        cb[480] = cb[490] = cb[496] = cb[506] = cb[522] = cb[532] = cb[538] = cb[548] = cb[565] = () => {
-            // blink the smallest rectangle
-            const rect = [...eightRects].pop();
-            if (cursor3 % 2 == 0) {
-                canvasContext.strokeStyle = '#09f5ff';
-            } else {
-                canvasContext.strokeStyle = 'white';
-            }
-            canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
-            cursor3++;
-        };
-        cb[550] = cb[575] = cb[600] = cb[625] = cb[650] = cb[675] = cb[700] = cb[725] = cb[750] = cb[775] = () => {
-            // show exterior expanding
-            const rect = tenRects[cursor4];
-            canvasContext.drawImage(frame.canvas, rect.x, rect.y, rect.width, rect.height, 0, 0, width, height);
-            const nextFrame = this.frames[frame.parameters.frameNumber + 1];
-            if (nextFrame) {
-                const innerX = offsetX - width / (2 * ZOOMFACTOR) - rect.x;
-                const innerY = offsetY - height / (2 * ZOOMFACTOR) - rect.y;
-                const embeddedRect = {
-                    x: innerX * width / rect.width,
-                    y: innerY * height / rect.height,
-                    width: (width / ZOOMFACTOR) * width / rect.width,
-                    height: (height / ZOOMFACTOR) * height / rect.height
-                };
-                canvasContext.strokeStyle = 'white';
-                canvasContext.strokeRect(embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
-                canvasContext.drawImage(nextFrame.canvas, 0, 0, width, height,
-                    embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
-
-            }
-            cursor4++;
-        };
-        cb[776] = () => {
-            this.canvas.style.cursor = 'crosshair';
-            this.zoomSequenceActive = false;
-            this.emit('zoom-end');
-
-        };
-        Rx.Observable.interval(10).take(cb.length).subscribe(e=> {
-            if (cb[e]) {
-                cb[e]();
-            }
+            });
         });
+
+        const sequence2Frames = [2350, 2550, 2750, 2950, 3150, 3350, 3550, 3750];
+        let cursor2 = 0;
+        sequence2Frames.forEach(e => {
+            queue.push({
+                time: e,
+                callback: () => {
+                    canvasContext.drawImage(frame.canvas, 0, 0, width, height);
+                    // draw rectangles starting on the outside and in to where interpolateZoomRect is, using cursor2 as a counter
+                    canvasContext.strokeStyle = '#FFFFFF';
+                    canvasContext.lineWidth = 2;
+                    const rect = eightRects[cursor2];
+                    canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                    if (cursor2 < (sequence2Frames.length - 1)) {
+                        for (let prior = cursor2 - 1, alpha = 255; prior >= Math.max(0, cursor2 - 4); prior--) {
+                            alpha >>= 2;
+                            const rect = eightRects[prior];
+                            canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                        }
+                    }
+                    cursor2++;
+                }
+            });
+        });
+
+        const sequence3Frames = [4800, 4900, 4960, 5060, 5220, 5320, 5380, 5480, 5650];
+        let cursor3 = 0;
+        sequence3Frames.forEach(e => {
+            queue.push({
+                time: e,
+                callback: () => {
+                    // blink the smallest rectangle
+                    const rect = [...eightRects].pop();
+                    if (cursor3 % 2 == 0) {
+                        canvasContext.strokeStyle = '#09f5ff';
+                    } else {
+                        canvasContext.strokeStyle = 'white';
+                    }
+                    canvasContext.strokeRect(rect.x, rect.y, rect.width, rect.height);
+                    cursor3++;
+                }
+            })
+        });
+
+        const sequence4Frames = [5500, 5750, 6000, 6250, 6500, 6750, 7000, 7250, 7500, 7750];
+        let cursor4 = 0;
+        sequence4Frames.forEach(e => {
+           queue.push({
+               time: e,
+               callback: () => {
+                   // show exterior expanding
+                   const rect = tenRects[cursor4];
+                   canvasContext.drawImage(frame.canvas, rect.x, rect.y, rect.width, rect.height, 0, 0, width, height);
+                   const nextFrame = this.frames[frame.parameters.frameNumber + 1];
+                   if (nextFrame) {
+                       const innerX = offsetX - width / (2 * ZOOMFACTOR) - rect.x;
+                       const innerY = offsetY - height / (2 * ZOOMFACTOR) - rect.y;
+                       const embeddedRect = {
+                           x: innerX * width / rect.width,
+                           y: innerY * height / rect.height,
+                           width: (width / ZOOMFACTOR) * width / rect.width,
+                           height: (height / ZOOMFACTOR) * height / rect.height
+                       };
+                       canvasContext.strokeStyle = 'white';
+                       canvasContext.strokeRect(embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
+                       canvasContext.drawImage(nextFrame.canvas, 0, 0, width, height,
+                           embeddedRect.x, embeddedRect.y, embeddedRect.width, embeddedRect.height);
+
+                   }
+                   cursor4++;
+               }
+           });
+        });
+
+
+        this.animationFrameJobs = {
+            initialTimestamp: this.animationFrameTimestamp,
+            queue
+        };
+
     }
 }
 
@@ -399,7 +444,7 @@ $(function() {
             });
         }
     });
-    mandel.on('clear-hover', julia.reset);
+    mandel.on('clear-hover', julia.reset.bind(julia));
     mandel.on('zoom-start', obj => {
         responsiveJulia = false;
     });
