@@ -1,4 +1,3 @@
-import $ from 'jquery';
 import Rx from 'rxjs/Rx';
 import MyWorker from 'worker-loader!./algorithm.js';
 
@@ -7,7 +6,6 @@ const BOTTOM_TEXT_MARGIN = 10;
 const ZOOMFACTOR = 10.0;
 const MAXFRAMES = 14;
 
-const cars1 = new Audio('../audio/cars1.mp3'), cars2 = new Audio('../audio/cars2.mp3');
 const zoomSequence1 = new Audio('../audio/zoomSequence1.mp3');
 const afterzoom = new Audio('../audio/afterzoom.mp3');
 
@@ -82,7 +80,7 @@ function interpolateScreenClipRects(offsetX, offsetY, width, height, steps, zoom
     return rects;
 }
 
-class FractalComponent {
+export default class {
 
     constructor(canvas, interactive, initialParams) {
 
@@ -229,7 +227,7 @@ class FractalComponent {
     }
 
     reset() {
-        this.frames = Array(MAXFRAMES).fill(null);
+        this.frames = new Array(MAXFRAMES).fill(null);
         this.hover = null;
         this.CURRENT_FRAME_NUMBER = 0;
         this.animationFrameJobs = null;
@@ -242,7 +240,7 @@ class FractalComponent {
             return;
         }
 
-        zoomSequence1.play();
+        new Audio('../audio/zoomSequence1.mp3').play();
         this.canvas.style.cursor = 'cursor';
 
         let [offsetX, offsetY] = mouseCoords(e, true);
@@ -395,60 +393,3 @@ class FractalComponent {
 
     }
 }
-
-$(function() {
-
-    if (document.fonts.load) {
-        try {
-            document.fonts.load('10pt "WheatonCapitals-Regular"').then(console.log);
-        }
-        catch(e) {
-            console.log(e);
-        }
-    }
-
-    setInterval(()=>{cars1.play()}, 4000);
-    setInterval(()=>{cars2.play()}, 5000);
-
-    const paletteIndexM = Math.floor(100 * Math.random());
-    const paletteIndexJ = Math.floor(100 * Math.random());
-
-    const mandel = new FractalComponent($('#mandel')[0],
-        true,
-        {
-            frameNumber: 0,
-            x1: -2,
-            y1: -1.15,
-            x2: 1.0,
-            y2: 1.15,
-            paletteIndex: paletteIndexM,
-        }
-    );
-
-    const julia = new FractalComponent($('#julia')[0], false);
-
-    let responsiveJulia = true;
-
-    mandel.on('update-hover', location => {
-        const {mouseX, mouseY, x, y} = location;
-        if (responsiveJulia) {
-            julia.startCalculating({
-                frameNumber: 0,
-                x1: -2,
-                y1: -1.15,
-                x2: 1.0,
-                y2: 1.15,
-                juliaX: x,
-                juliaY: y,
-                paletteIndex: paletteIndexJ,
-            });
-        }
-    });
-    mandel.on('clear-hover', julia.reset.bind(julia));
-    mandel.on('zoom-start', obj => {
-        responsiveJulia = false;
-    });
-    mandel.on('zoom-end', obj => {
-        responsiveJulia = true;
-    })
-});

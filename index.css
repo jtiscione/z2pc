@@ -2,7 +2,20 @@
 body {
     background: #4c8acc;
 }
+
+.stats {
+    display: inline-block;
+}
+
 #mandel {
     cursor: crosshair;
+}
+
+#orbits {
     float: left;
+    clear: left;
+}
+#julia {
+    float: left;
+    clear: left;
 }

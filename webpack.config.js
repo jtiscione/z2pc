@@ -16,7 +16,7 @@ console.log("isVerbose: ",isVerbose);
 
 module.exports = {
     //context: path.resolve(__dirname, './src'),
-    entry: ['./src/mandelbrot.js', './index.css'],
+    entry: ['./src/main.js', './index.css'],
     output: {
         path: path.resolve(__dirname, './dist'),
         publicPath: './',
