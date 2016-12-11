@@ -103,7 +103,6 @@ export default class {
             this.context.beginPath();
             this.context.strokeStyle = 'white';
             this.context.strokeWidth = '2.0';
-            console.log("this.context.strokeStyle: "+this.context.strokeStyle);
             this.context.beginPath();
             this.context.ellipse(w / 2, h / 2, (2.0 / FIXED_X2) * (w / 2), (2.0 / FIXED_Y2) * (h / 2), 0, 0, 2 * Math.PI);
             this.context.stroke();
@@ -191,8 +190,9 @@ export default class {
         let prevX = null, prevY = null;
         this.context.strokeWidth = 1.0;
         this.context.beginPath();
-        this.context.strokeStyle = 'yellow';
-        for (let j = 0; j < mu; j++) {
+        this.context.strokeStyle = 'rgba(127, 127, 0, 127)';
+        // Draw at most 20 yellow lines before moving on
+        for (let j = 0; j < Math.min(mu, 20); j++) {
             let xval = xvals[j];
             let yval = yvals[j];
             let pixelX = this._pixelCoordinateX(xval);
@@ -210,8 +210,10 @@ export default class {
                 break;
             }
         }
+        this.context.beginPath();
 
-        this.context.strokeStyle = 'red';
+        prevX = prevY = null;
+        this.context.strokeStyle = 'rgba(255, 0, 0, 127)';
         for (let j = mu; j < mu + lambda; j++) {
             let xval = xvals[j];
             let yval = yvals[j];
