@@ -13,8 +13,23 @@ $(function() {
             console.log(e);
         }
     }
+
+    new Audio('../audio/intro.mp3').play();
+
+    $('.slide').animate({
+        'margin-top': -550,
+    }, 57000, function() {
+        $('#orbits').css('display', 'block');
+        $('.overlay').fadeTo(2000, 0.0, function() {
+            $('.overlay').css('display', 'none');
+        });
+        console.log("done");
+    });
+
     const cars1 = new Audio('../audio/cars1.mp3'), cars2 = new Audio('../audio/cars2.mp3');
 
+    //cars1.loop();
+    //cars2.loop();
     setInterval(()=>{cars1.play()}, 4000);
     setInterval(()=>{cars2.play()}, 5000);
 
@@ -33,15 +48,13 @@ $(function() {
         }
     );
 
-    const julia = new FractalComponent($('#julia')[0], false);
 
-    const orbitDrawer = new OrbitDrawerComponent($('#orbits')[0],
-        $('#escapeIters')[0],
-        $('#periodicity')[0],
-    );
+    const orbitDrawer = new OrbitDrawerComponent($('#orbits')[0]);
 
-    let responsiveJulia = true;
+    let responsive = true;
 
+    /*
+     //const julia = new FractalComponent($('#julia')[0], false);
     mandel.on('update-hover', location => {
         const {x, y} = location;
         if (responsiveJulia) {
@@ -58,16 +71,20 @@ $(function() {
         }
     });
     mandel.on('clear-hover', julia.reset.bind(julia));
+    */
 
     mandel.on('update-hover', location => {
-        orbitDrawer.updateHover(location);
+        if (responsive) {
+            orbitDrawer.updateHover(location);
+        }
     });
     mandel.on('clear-hover', orbitDrawer.clearHover.bind(orbitDrawer));
     mandel.on('zoom-start', obj => {
-        responsiveJulia = false;
+        orbitDrawer.clearHover();
+        responsive = false;
     });
     mandel.on('zoom-end', obj => {
-        responsiveJulia = true;
+        responsive = true;
     });
 
 

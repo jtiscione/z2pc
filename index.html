@@ -5,14 +5,18 @@
     <title>Mandelbrot Set</title>
 </head>
 <body>
-    <canvas id="mandel" class="floatleft" width="800" height="600"></canvas>
-    <div class="stats">
-        <canvas id="orbits" width="400" height="400"></canvas>
-        <canvas id="julia" width="100" height="100"></canvas>
-        <div id="hoverX"></div>
-        <div id="hoverY"></div>
-        <div id="escapeIters"></div>
-        <div id="periodicity"></div>
+    <div class="parent">
+        <div class="overlay">
+            <div class="slide">
+                <div class="intro">
+                    <p>Late in the 1980s, advances in computer technology led to the discovery of an undiscovered mathematical object- known as the <span class="red">Mandelbrot Set.</span></p>
+                    <p>The Mandelbrot Set was defined as the set of all complex numbers <i>c</i> for which the function <i>f<sub>c</sub>(z) = z<sup>2</sup> + c</i> does not diverge when iterated from z=0.</p>
+                    <p>To zoom in on and enhance the set with your ESPER Analysis machine, click with the mouse.</p>
+                </div>
+            </div>
+        </div>
+        <canvas id="mandel" class="absolutezero" width="800" height="600"></canvas>
     </div>
+    <canvas id="orbits" width="400" height="400"></canvas>
 </body>
 </html>

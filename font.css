@@ -1,19 +1,38 @@
 
 @font-face {
-  font-family: 'WheatonCapitals-Regular';
-  src: url('./fonts/WheatonCapitals-Regular.woff') format('woff'),
-       url('./fonts/WheatonCapitals-Regular.ttf') format('truetype'),
-       url('./fonts/WheatonCapitals-Regular.svg#WheatonCapitals-Regular') format('svg');
-  font-weight: normal;
-  font-style: normal;
+    font-family: 'WheatonCapitals-Regular';
+    src: url('./fonts/WheatonCapitals-Regular.woff') format('woff'),
+    url('./fonts/WheatonCapitals-Regular.ttf') format('truetype'),
+    url('./fonts/WheatonCapitals-Regular.svg#WheatonCapitals-Regular') format('svg');
+    font-weight: normal;
+    font-style: normal;
 }
 
 @font-face {
-  font-family: 'wheaton capitals';
-  src: url('./fonts/wheaton capitals.eot');
-  src: url('./fonts/wheaton capitals.woff2') format('woff2'),
-       url('./fonts/wheaton capitals.eot?#iefix') format('embedded-opentype');
-  font-weight: normal;
-  font-style: normal;
+    font-family: 'wheaton capitals';
+    src: url('./fonts/wheaton capitals.eot');
+    src: url('./fonts/wheaton capitals.woff2') format('woff2'),
+    url('./fonts/wheaton capitals.eot?#iefix') format('embedded-opentype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+
+@font-face {
+    font-family: 'Goudy-Old-Style-Normal';
+    src: url('./fonts/Goudy-Old-Style-Normal.woff') format('woff'),
+    url('./fonts/Goudy-Old-Style-Normal.ttf') format('truetype'),
+    url('./fonts/Goudy-Old-Style-Normal.svg#Goudy-Old-Style-Normal') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: 'goudyo';
+    src: url('./fonts/goudyo.eot');
+    src: url('./fonts/goudyo.woff2') format('woff2'),
+    url('./fonts/goudyo.eot?#iefix') format('embedded-opentype');
+    font-weight: normal;
+    font-style: normal;
 }
 

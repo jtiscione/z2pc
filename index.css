@@ -14,8 +14,48 @@ body {
 #orbits {
     float: left;
     clear: left;
+    display: none;
 }
-#julia {
-    float: left;
-    clear: left;
+
+.parent {
+    width: 800px;
+    height: 600px;
+}
+
+.absolutezero {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+}
+
+.overlay {
+    position: absolute;
+    width: 800px;
+    height: 600px;
+    background: black;
+    top: 0px;
+    left: 0px;
+    z-index: 1;
+    overflow: hidden;
+}
+
+.slide {
+    position: relative;
+    width: 800px;
+    margin-top: 600px;
+}
+
+.intro {
+    color: white;
+    background: black;
+    font-family: Goudy-Old-Style-Normal;
+    font-size: 28px;
+    line-height: 200%;
+    margin-left: 20px;
+    margin-right: 20px;
+}
+
+.red {
+    color: red;
+    font-style: italic;
 }

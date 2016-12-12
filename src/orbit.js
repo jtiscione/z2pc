@@ -1,5 +1,8 @@
-import $ from 'jquery';
 import MyWorker from 'worker-loader!./algorithm.js';
+
+const FONT_NAME = 'WheatonCapitals-Regular';
+const BOTTOM_TEXT_MARGIN = 10;
+const CROSSRADIUS = 5;
 
 // Centered around zero:
 const FIXED_X2 = 3.0, FIXED_Y2 = 3.0;
@@ -24,12 +27,10 @@ function escapeIterations(cx, cy) {
 
 export default class {
 
-    constructor(_canvas, _labelEscapeIters, _labelPeriodicity) {
+    constructor(_canvas) {
 
         // DOM nodes
         this.canvas = _canvas;
-        this.labelEscapeIters = _labelEscapeIters;
-        this.labelPeriodicity = _labelPeriodicity;
 
         // Canvas context
         this.context = this.canvas.getContext('2d');
@@ -49,7 +50,7 @@ export default class {
             this.backgroundImageData = this.context.createImageData(this.width, this.height);
             this.backgroundImageData.data.set(e.data.results.pixelArray);
             worker.terminate();
-            requestAnimationFrame(this.paint.bind(this));
+            requestAnimationFrame(this._paint.bind(this));
         });
         worker.postMessage({x1: FIXED_X1,
                             y1: FIXED_Y1,
@@ -65,12 +66,12 @@ export default class {
 
     updateHover(e) {
         this.hover = e;
-        requestAnimationFrame(this.paint.bind(this));
+        requestAnimationFrame(this._paint.bind(this));
     }
 
     clearHover() {
         this.hover = null;
-        requestAnimationFrame(this.paint.bind(this));
+        requestAnimationFrame(this._paint.bind(this));
     }
 
     _pixelCoordinateX(x) {
@@ -82,12 +83,10 @@ export default class {
         return this.height * (1 - (y - FIXED_Y1) / (FIXED_Y2 - FIXED_Y1));
     }
 
-    paint() {
-
+    _paint() {
         if (this.backgroundImageData) {
             this.context.putImageData(this.backgroundImageData, 0, 0);
         }
-
         // Draw a cross on the canvas
         const w = this.width, h = this.height;
         this.context.beginPath();
@@ -110,21 +109,24 @@ export default class {
 
         if (this.hover) {
             const {x, y} = this.hover;
-            const escapeIters = escapeIterations(x, y);
-            if (escapeIters === null) {
-                this.labelEscapeIters.innerHTML = `Escape iterations: &gt;${MAX_ITERS}`;
-            } else {
-                this.labelEscapeIters.innerHTML = `Escape iterations: ${escapeIters}`;
-            }
+            this.context.font = `20px "${FONT_NAME}"`;
+            this.context.textAlign = 'start';
+            this.context.textBaseline = 'bottom';
+            this.context.strokeStyle = 'black';
+            this.context.fillStyle = 'white';
+            let status = '';
             let period = this._attractiveCycle(x, y);
             if (period === null) {
-                this.labelPeriodicity.innerHTML = 'Periodicity: ?';
+                const escapeIters = escapeIterations(x, y);
+                if (escapeIters === null) {
+                    status = `ESCAPE ITERATIONS: &gt;${MAX_ITERS}`;
+                } else {
+                    status = `ESCAPE ITERATIONS: ${escapeIters}`;
+                }
             } else {
-                this.labelPeriodicity.innerHTML = `Periodicity: ${period}`;
+                status = `PERIODICITY: ${period}`;
             }
-        } else {
-            this.labelEscapeIters.innerHTML = '&nbsp;';
-            this.labelPeriodicity.innerHTML = '&nbsp;';
+            this.context.fillText(status, BOTTOM_TEXT_MARGIN, this.height - BOTTOM_TEXT_MARGIN);
         }
     }
 
@@ -190,47 +192,57 @@ export default class {
         let prevX = null, prevY = null;
         this.context.strokeWidth = 1.0;
         this.context.beginPath();
-        this.context.strokeStyle = 'rgba(127, 127, 0, 127)';
-        // Draw at most 20 yellow lines before moving on
-        for (let j = 0; j < Math.min(mu, 20); j++) {
+        this.context.strokeStyle = 'rgba(127, 127, 0, 32)';
+        // Draw at most 50 yellow lines before moving on
+        for (let j = 0; j < Math.min(mu, 50); j++) {
             let xval = xvals[j];
             let yval = yvals[j];
             let pixelX = this._pixelCoordinateX(xval);
             let pixelY = this._pixelCoordinateY(yval);
-            if (pixelX >= 0 && pixelX <= this.width && pixelY >= 0 && pixelY <= this.height) { // sanity check
-                if (prevX === null || prevY === null) {
-                    this.context.moveTo(pixelX, pixelY);
-                } else {
-                    this.context.lineTo(pixelX, pixelY);
-                    this.context.stroke();
-                }
-                prevX = pixelX;
-                prevY = pixelY;
+            if (prevX === null || prevY === null) {
+                this.context.moveTo(pixelX, pixelY);
             } else {
-                break;
+                this.context.lineTo(pixelX, pixelY);
+                this.context.stroke();
             }
+            prevX = pixelX;
+            prevY = pixelY;
         }
         this.context.beginPath();
 
         prevX = prevY = null;
-        this.context.strokeStyle = 'rgba(255, 0, 0, 127)';
+        this.context.strokeStyle = 'rgba(255, 0, 0, 32)';
+        const crosspoints = [];
         for (let j = mu; j < mu + lambda; j++) {
             let xval = xvals[j];
             let yval = yvals[j];
             let pixelX = this._pixelCoordinateX(xval);
             let pixelY = this._pixelCoordinateY(yval);
-            if (pixelX >= 0 && pixelX <= this.width && pixelY >= 0 && pixelY <= this.height) { // sanity check
-                if (prevX === null || prevY === null) {
-                    this.context.moveTo(pixelX, pixelY);
-                } else {
-                    this.context.lineTo(pixelX, pixelY);
-                    this.context.stroke();
-                }
-                prevX = pixelX;
-                prevY = pixelY;
+            crosspoints.push({pixelX, pixelY});
+            if (prevX === null || prevY === null) {
+                this.context.moveTo(pixelX, pixelY);
             } else {
-                break;
+                this.context.lineTo(pixelX, pixelY);
+                this.context.stroke();
+            }
+            prevX = pixelX;
+            prevY = pixelY;
+            if (j === mu + lambda - 1) {
+                // draw one last line to complete the loop
+                this.context.lineTo(this._pixelCoordinateX(xvals[mu]),
+                                    this._pixelCoordinateY(yvals[mu]));
+                this.context.stroke();
             }
         }
+
+        crosspoints.forEach(e => {
+            this.context.strokeStyle = 'red';
+            this.context.beginPath();
+            this.context.moveTo(e.pixelX - CROSSRADIUS, e.pixelY);
+            this.context.lineTo(e.pixelX + CROSSRADIUS, e.pixelY);
+            this.context.moveTo(e.pixelX, e.pixelY - CROSSRADIUS);
+            this.context.lineTo(e.pixelX, e.pixelY + CROSSRADIUS);
+            this.context.stroke();
+        });
     }
 }
