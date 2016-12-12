@@ -14,7 +14,7 @@ $(function() {
         }
     }
 
-    new Audio('audio/intro.mp3').play();
+    new Audio('./public/audio/intro.mp3').play();
 
     $('.slide').animate({
         'margin-top': -550,
@@ -26,7 +26,7 @@ $(function() {
         console.log("done");
     });
 
-    const cars1 = new Audio('audio/cars1.mp3'), cars2 = new Audio('audio/cars2.mp3');
+    const cars1 = new Audio('./public/audio/cars1.mp3'), cars2 = new Audio('./public/audio/cars2.mp3');
 
     //cars1.loop();
     //cars2.loop();

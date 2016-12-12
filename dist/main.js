@@ -5317,7 +5317,7 @@
 	        }
 	    }
 	
-	    new Audio('audio/intro.mp3').play();
+	    new Audio('./public/audio/intro.mp3').play();
 	
 	    (0, _jquery2.default)('.slide').animate({
 	        'margin-top': -550
@@ -5329,8 +5329,8 @@
 	        console.log("done");
 	    });
 	
-	    var cars1 = new Audio('audio/cars1.mp3'),
-	        cars2 = new Audio('audio/cars2.mp3');
+	    var cars1 = new Audio('./public/audio/cars1.mp3'),
+	        cars2 = new Audio('./public/audio/cars2.mp3');
 	
 	    //cars1.loop();
 	    //cars2.loop();
@@ -5425,8 +5425,8 @@
 	var ZOOMFACTOR = 10.0;
 	var MAXFRAMES = 14;
 	
-	var zoomSequence1 = new Audio('audio/zoomSequence1.mp3');
-	var afterzoom = new Audio('audio/afterzoom.mp3');
+	var zoomSequence1 = new Audio('./public/audio/zoomSequence1.mp3');
+	var afterzoom = new Audio('./public/audio/afterzoom.mp3');
 	
 	function mouseCoords(e, avoidEdges) {
 	    var offsetX = e.offsetX,
@@ -5696,7 +5696,7 @@
 	                return;
 	            }
 	
-	            new Audio('audio/zoomSequence1.mp3').play();
+	            new Audio('./public/audio/zoomSequence1.mp3').play();
 	            this.canvas.style.cursor = 'cursor';
 	
 	            var _mouseCoords3 = mouseCoords(e, true),
