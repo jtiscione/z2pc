@@ -240,7 +240,7 @@ export default class {
             return;
         }
 
-        new Audio('./public/audio/zoomSequence1.mp3').play();
+        new Audio('./public/audio/zoomsequence1.mp3').play();
         this.canvas.style.cursor = 'cursor';
 
         let [offsetX, offsetY] = mouseCoords(e, true);
