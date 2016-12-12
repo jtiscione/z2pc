@@ -2,6 +2,7 @@ const path = require('path');
 
 const webpack = require('webpack');
 const CleanWebpackPlugin = require('clean-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const WebpackBuildNotifierPlugin = require('webpack-build-notifier');
 
@@ -91,6 +92,9 @@ module.exports = {
             dry: false
         }),
         new ExtractTextPlugin('styles.css'),
+        new CopyWebpackPlugin([
+            {from: 'audio', to: 'public/audio'}
+        ]),
 
         new webpack.optimize.OccurrenceOrderPlugin(true),
 
