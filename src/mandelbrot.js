@@ -6,8 +6,8 @@ const BOTTOM_TEXT_MARGIN = 10;
 const ZOOMFACTOR = 10.0;
 const MAXFRAMES = 14;
 
-const zoomSequence1 = new Audio('../audio/zoomSequence1.mp3');
-const afterzoom = new Audio('../audio/afterzoom.mp3');
+const zoomSequence1 = new Audio('audio/zoomSequence1.mp3');
+const afterzoom = new Audio('audio/afterzoom.mp3');
 
 function mouseCoords(e, avoidEdges) {
     let offsetX = e.offsetX, offsetY = e.offsetY;
@@ -240,7 +240,7 @@ export default class {
             return;
         }
 
-        new Audio('../audio/zoomSequence1.mp3').play();
+        new Audio('audio/zoomSequence1.mp3').play();
         this.canvas.style.cursor = 'cursor';
 
         let [offsetX, offsetY] = mouseCoords(e, true);
