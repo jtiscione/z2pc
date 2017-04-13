@@ -4,9 +4,7 @@ const webpack = require('webpack');
 const CleanWebpackPlugin = require('clean-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const WebpackBuildNotifierPlugin = require('webpack-build-notifier');
 
-const combineLoaders = require('webpack-combine-loaders');
 const ExtractTextPlugin = require('extract-text-webpack-plugin');
 
 const isDebug = !process.argv.includes('--release');
@@ -16,27 +14,11 @@ console.log("isDebug: ", isDebug);
 console.log("isVerbose: ",isVerbose);
 
 module.exports = {
-    //context: path.resolve(__dirname, './src'),
     entry: ['./src/main.js', './index.css'],
     output: {
         path: path.resolve(__dirname, './dist'),
-        publicPath: './',
         filename: isDebug ? '[name].js' : '[name].[hash].js',
         chunkFilename: isDebug ? '[name].[id].js?[chunkhash]' : '[name].[id].[chunkhash].js',
-    },
-    target: 'web',
-    cache: isDebug,
-    debug: isDebug,
-    stats: {
-        colors: true,
-        reasons: isDebug,
-        hash: isVerbose,
-        version: isVerbose,
-        timings: true,
-        chunks: isVerbose,
-        chunkModules: isVerbose,
-        cached: isVerbose,
-        cachedAssets: isVerbose,
     },
     devtool: 'source-map',
     module: {
@@ -54,28 +36,15 @@ module.exports = {
             },
             {
                 test: /\.css$/,
-                loader: ExtractTextPlugin.extract('style-loader' ,
-                    combineLoaders([
-                        {
-                            loader: 'css-loader',
-                             query: {
-                                modules: false,
-                                localIdentName: '[name]',
-                                //modules: true,
-                                //localIdentName: '[name]__local__[hash:base64:5]',
-                                exclude: '/node_modules/',
-                             }
-                         }
-                     ])
-                )
-             },
+                loader: ExtractTextPlugin.extract({fallback: 'style-loader', use: 'css-loader'}),
+            },
             {
                 test: /\.jpe?g$|\.gif$|\.png$|\.wav$|\.mp3$/,
-                loader: "file"
+                loader: "file-loader"
             },
             {
                 test: /\.(eot|svg|ttf|woff|woff2)$/,
-                loader: 'file?name=public/fonts/[name].[ext]'
+                loader: 'file-loader?name=public/fonts/[name].[ext]'
             }
         ]
     },
@@ -96,29 +65,23 @@ module.exports = {
             {from: 'audio', to: 'public/audio'}
         ]),
 
-        new webpack.optimize.OccurrenceOrderPlugin(true),
-
-        ...isDebug ? [] : [
-            new webpack.optimize.DedupePlugin(),
-            new webpack.optimize.UglifyJsPlugin({
-                compress: {
-                    screw_ie8: true,
-                    warnings: isVerbose,
-                }
-            })
-        ],
+        // new webpack.optimize.OccurrenceOrderPlugin(true),
+        //
+        // ...isDebug ? [] : [
+        //     new webpack.optimize.DedupePlugin(),
+        //     new webpack.optimize.UglifyJsPlugin({
+        //         compress: {
+        //             screw_ie8: true,
+        //             warnings: isVerbose,
+        //         }
+        //     })
+        // ],
 
         new HtmlWebpackPlugin({
             hash: true,
             filename: 'index.html',
             template: __dirname+'/index.html',
             environment: process.env.NODE_ENV
-        }),
-
-        new WebpackBuildNotifierPlugin({
-            title: "z2pc",
-            logo: path.resolve("./img/favicon.png"),
-            suppressSuccess: true
         }),
 
     ]

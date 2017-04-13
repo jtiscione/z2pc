@@ -6,7 +6,7 @@ const BOTTOM_TEXT_MARGIN = 10;
 const ZOOMFACTOR = 10.0;
 const MAXFRAMES = 14;
 
-const zoomSequence1 = new Audio('./public/audio/zoomSequence1.mp3');
+const zoomSequence1 = new Audio('./public/audio/zoomsequence1.mp3');
 const afterzoom = new Audio('./public/audio/afterzoom.mp3');
 
 function mouseCoords(e, avoidEdges) {

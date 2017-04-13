@@ -3,8 +3,9 @@ import FractalComponent from './mandelbrot.js';
 import OrbitDrawerComponent from './orbit.js';
 const FONT_NAME = 'WheatonCapitals-Regular';
 
+console.log("Outside");
 $(function() {
-
+    console.log("Inside");
     if (document.fonts.load) {
         try {
             document.fonts.load(`10pt "${FONT_NAME}"`).then(console.log);
@@ -13,18 +14,6 @@ $(function() {
             console.log(e);
         }
     }
-
-    new Audio('./public/audio/intro.mp3').play();
-
-    $('.slide').animate({
-        'margin-top': -550,
-    }, 57000, function() {
-        $('#orbits').css('display', 'block');
-        $('.overlay').fadeTo(2000, 0.0, function() {
-            $('.overlay').css('display', 'none');
-        });
-        console.log("done");
-    });
 
     const cars1 = new Audio('./public/audio/cars1.mp3'), cars2 = new Audio('./public/audio/cars2.mp3');
 
