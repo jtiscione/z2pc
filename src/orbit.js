@@ -5,7 +5,7 @@ const BOTTOM_TEXT_MARGIN = 10;
 const CROSSRADIUS = 5;
 
 // Centered around zero:
-const FIXED_X2 = 3.0, FIXED_Y2 = 3.0;
+const FIXED_X2 = 2.0, FIXED_Y2 = 2.0;
 const FIXED_X1 = -FIXED_X2, FIXED_Y1 = -FIXED_Y2;
 const MAX_ITERS = 65536;
 
