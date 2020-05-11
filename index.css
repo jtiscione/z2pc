@@ -1,6 +1,10 @@
 @import './font.css';
 body {
-    background: #4c8acc;
+    background: black;
+    color: white;
+    width: 100%;
+    height: 100%;
+    font-family: 'WheatonCapitals-Regular', sans-serif;
 }
 
 .stats {
@@ -11,20 +15,51 @@ body {
     cursor: crosshair;
 }
 
-#orbits {
-    float: left;
-    clear: left;
+.flexbox {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1250px;
 }
 
 .parent {
     width: 800px;
     height: 600px;
+    position: relative;
+    border: 1px solid gray;
+    margin: 10px;
 }
 
 .absolutezero {
     position: absolute;
     top: 0px;
     left: 0px;
+}
+
+.orbitbox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid gray;
+    margin: 10px;
+}
+
+.instructions {
+    flex-grow: 1;
+    padding-bottom: 50px;
+}
+
+.title {
+    font-size: 18pt;
+    flex-grow: 0;
+}
+
+.orbitlabel {
+    height: 25px;
+    flex-grow: 0;
 }
 
 .overlay {
