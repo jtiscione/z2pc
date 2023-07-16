@@ -5,10 +5,23 @@
     <title>Mandelbrot Set</title>
 </head>
 <body>
-    <div class="parent">
-        <canvas id="mandel" class="absolutezero" width="800" height="600"></canvas>
+    <div class="flexbox">
+        <div class="parent">
+            <canvas id="mandel" class="absolutezero" width="800" height="600"></canvas>
+        </div>
+        <div class="orbitbox">
+            <div class="title">
+                <p>BLADE RUNNER MANDELBROT</p>
+            </div>
+            <div class="instructions">
+                <p>CLICK TO ENHANCE.</p>
+            </div>
+            <div class="orbitlabel">
+                ORBIT GRAPH:
+            </div>
+            <canvas id="orbits" width="400" height="400"></canvas>
+        </div>
     </div>
-    <canvas id="orbits" width="400" height="400"></canvas>
     <script type="text/javascript" src="./main.js"/>
 </body>
 </html>

@@ -126,6 +126,9 @@ export default class {
             } else {
                 status = `PERIODICITY: ${period}`;
             }
+            this.context.strokeStyle = 'black';
+            this.context.fillStyle = 'white';
+            this.context.strokeText(status, BOTTOM_TEXT_MARGIN, this.canvas.height - BOTTOM_TEXT_MARGIN);
             this.context.fillText(status, BOTTOM_TEXT_MARGIN, this.height - BOTTOM_TEXT_MARGIN);
         }
     }
