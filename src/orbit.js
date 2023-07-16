@@ -119,7 +119,7 @@ export default class {
             if (period === null) {
                 const escapeIters = escapeIterations(x, y);
                 if (escapeIters === null) {
-                    status = `ESCAPE ITERATIONS: &gt;${MAX_ITERS}`;
+                    status = `ESCAPE ITERATIONS: >${MAX_ITERS}`;
                 } else {
                     status = `ESCAPE ITERATIONS: ${escapeIters}`;
                 }
